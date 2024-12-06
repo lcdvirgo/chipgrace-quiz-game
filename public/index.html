@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quiz Game</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js" integrity="sha384-Gr6Lu2Ajx28mzwyVR8CFkULdCU7kMlZ9UthllibdOSo6qAiN+yXNHqtgdTvFXMT4" crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .screen {
+            display: none;
+        }
+        
+        .active {
+            display: block;
+        }
+        
+        .answer-btn {
+            width: 45%;
+            height: 80px;
+            margin: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        
+        .answer-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        #answer-0 { background: #E21B3C; color: white; }
+        #answer-1 { background: #1368CE; color: white; }
+        #answer-2 { background: #D89E00; color: white; }
+        #answer-3 { background: #26890C; color: white; }
+        
+        .incorrect {
+            opacity: 0.3;
+        }
+        
+        .player-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .correct {
+            background: #26890C;
+            color: white;
+        }
+        
+        .wrong {
+            background: #E21B3C;
+            color: white;
+        }
+        
+        .leaderboard {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .leaderboard th, .leaderboard td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .player-name {
+            margin: 5px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+
+        .checkmark {
+            font-size: 24px;
+            margin-left: 10px;
+        }
+
+        .timer-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .timer-progress {
+            height: 100%;
+            background: linear-gradient(to right, #1368CE, #E21B3C);
+            transition: width 1s linear;
+        }
+
+        .timer-text {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .registration-container {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .registration-container iframe {
+            margin: 20px 0;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .name-entry {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        
+        .name-entry input {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        
+        .name-entry button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #1368CE;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .name-entry button:hover {
+            background: #0D47A1;
+        }
+        
+        .waiting-message {
+            margin-top: 20px;
+            color: #666;
+        }
+        .registration-container {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.name-entry {
+    margin: 40px 0;
+    padding: 30px;
+    background: #f8f8f8;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.name-entry input {
+    width: 300px;
+    padding: 15px 20px;
+    font-size: 18px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    margin-right: 10px;
+    transition: border-color 0.3s;
+}
+
+.name-entry input:focus {
+    outline: none;
+    border-color: #1368CE;
+}
+
+.btn {
+    padding: 15px 30px;
+    font-size: 18px;
+    background: #1368CE;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn:hover {
+    background: #0D47A1;
+    transform: translateY(-2px);
+}
+
+.player-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.player-name {
+    background: #f0f0f0;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 16px;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.waiting-message {
+    color: #666;
+    margin: 20px 0;
+    font-style: italic;
+}
+
+.host-controls {
+    margin-top: 30px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+    </style>
+</head>
+<body>
+    <!-- Registration Screen -->
+    <div id="registration-screen" class="screen active">
+        <div class="registration-container">
+            <h1>Welcome to Chip & Grace's Quiz!</h1>
+            
+            <div class="name-entry">
+                <input type="text" id="player-name" placeholder="Enter your name" required>
+                <button class="btn" onclick="joinGame()">Join Game</button>
+            </div>
+
+            <!-- Players waiting room -->
+            <div id="waiting-room" style="display: none;">
+                <h2>Players in Room</h2>
+                <div id="player-list" class="player-list"></div>
+                <div class="waiting-message">
+                    Waiting for host to start the game...
+                </div>
+                
+                <!-- Only visible to chipgrace -->
+                <div id="host-controls" class="host-controls" style="display: none;">
+                    <button class="btn start-game-btn" onclick="startGame()">
+                        Start Game
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="connection-status" style="position: fixed; bottom: 10px; right: 10px; padding: 10px;"></div>
+    </div>
+
+    <!-- Question Screen -->
+    <div id="question-screen" class="screen">
+        <h2 id="question-text"></h2>
+        <div class="timer-text">20</div>
+        <div class="timer-bar">
+            <div class="timer-progress" style="width: 100%"></div>
+        </div>
+        <div class="answer-grid">
+            <button class="answer-btn" id="answer-0" onclick="submitAnswer(0)"></button>
+            <button class="answer-btn" id="answer-1" onclick="submitAnswer(1)"></button>
+            <button class="answer-btn" id="answer-2" onclick="submitAnswer(2)"></button>
+            <button class="answer-btn" id="answer-3" onclick="submitAnswer(3)"></button>
+        </div>
+    </div>
+
+    <!-- Answer Reveal Screen -->
+    <div id="answer-reveal" class="screen">
+        <h2>Answer Results</h2>
+        <div class="answer-grid">
+            <button class="answer-btn" id="reveal-0"></button>
+            <button class="answer-btn" id="reveal-1"></button>
+            <button class="answer-btn" id="reveal-2"></button>
+            <button class="answer-btn" id="reveal-3"></button>
+        </div>
+        <div id="player-results"></div>
+        <button onclick="showLeaderboard()" style="margin-top: 20px;">Show Leaderboard</button>
+    </div>
+
+    <!-- Leaderboard Screen -->
+    <div id="leaderboard-screen" class="screen">
+        <h2>Leaderboard</h2>
+        <table class="leaderboard">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-body"></tbody>
+        </table>
+        <button onclick="nextQuestion()" id="next-btn">Next Question</button>
+    </div>
+
+    <!-- Final Results Screen -->
+    <div id="final-screen" class="screen">
+        <h1>Game Over!</h1>
+        <h2>Top 5 Winners</h2>
+        <table class="leaderboard">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Final Score</th>
+                </tr>
+            </thead>
+            <tbody id="final-leaderboard"></tbody>
+        </table>
+        <button onclick="resetGame()">Play Again</button>
+    </div>
+
+    <script>
+    const socket = io('http://localhost:8888', {
+        transports: ['websocket', 'polling']
+    });
+
+    // Add connection status logging
+    socket.on('connect', () => {
+        console.log('Connected to server with ID:', socket.id);
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('Connection error:', error);
+    });
+    let playerId = null;
+    let isHost = false;
+    let currentQuestion = 0;
+    let players = [];
+    let timer;
+    let timeLeft;
+
+    function startTimer() {
+        timeLeft = 20;
+        updateTimerDisplay();
+    
+        if (timer) clearInterval(timer);
+        
+        timer = setInterval(() => {
+            timeLeft--;
+            updateTimerDisplay();
+            
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                submitAnswer(-1); // Time's up
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay() {
+        const timerText = document.querySelector('.timer-text');
+        const timerProgress = document.querySelector('.timer-progress');
+        if (timerText && timerProgress) {
+            timerText.textContent = timeLeft;
+            const percentage = (timeLeft / 20) * 100;
+            timerProgress.style.width = `${percentage}%`;
+        }
+    }
+
+    const questions = [
+        {
+            question: "What colour was Chip and Grace's outfit on their first date?",
+            answers: ["Linen beige", "White", "Sage green"],
+            correct: 2
+        },
+        {
+            question: "Chip and Grace's favourite movie for 2024?",
+            answers: ["The Red One", "Deadpool & Wolverine", "Inside Out 2"],
+            correct: 1
+        },
+        {
+            question: "Chip and Grace's shared dream vacation?",
+            answers: ["South Korea", "Kyoto", "Switzerland", "All of the above"],
+            correct: 1
+        },
+        {
+            question: "Chip and Grace's favourite mutual hobby?",
+            answers: ["A walk in the park", "Sing to our hearts' content! - Karaoke", "Eating"],
+            correct: 0
+        },
+        {
+            question: "How long did we see each other before officially dating?",
+            answers: ["22 days", "32 days", "42 days"],
+            correct: 2
+        },
+        {
+            question: "What was Grace's first impression of Chip?",
+            answers: ["Sweet", "Intense", "Kind"],
+            correct: 1
+        },
+        {
+            question: "What was Chip's first impression of Grace?",
+            answers: ["Ice queen", "Shy", "Obedient"],
+            correct: 2
+        },
+        {
+            question: "Who is the messier one?",
+            answers: ["Grace", "Chip", "Both as messy"],
+            correct: 0
+        },
+        {
+            question: "What is Grace's and Chip's favourite colour, respectively?",
+            answers: ["Sage green, sage green", "Pink, sage green", "White, orange", "White, beige"],
+            correct: 2
+        },
+        {
+            question: "What is Chip's favourite food?",
+            answers: ["Ayam penyat", "Nasi lemak", "Anything with chilli"],
+            correct: 2
+        },
+        {
+            question: "What's Grace's favourite comfort food?",
+            answers: ["Anything spicy", "Itacho Sushi", "Sauerkraut fish soup", "Pietro Italiano (Italian!)"],
+            correct: 1
+        },
+        {
+            question: "What is Chip and Grace's pet name for each other?",
+            answers: ["Honey", "Dear", "Darling", "Love"],
+            correct: 3
+        },
+        {
+            question: "Are Chip and Grace beach or mountain persons?",
+            answers: ["Beach please", "Majestic mountain", "Neither, we're homebodies"],
+            correct: 1
+        },
+        {
+            question: "How many children do we want?",
+            answers: ["Stop at one", "Sky's the limit!", "2", "3"],
+            correct: 2
+        }
+    ];
+
+    function joinGame() {
+        const playerName = document.getElementById('player-name').value.trim();
+        
+        if (!playerName) {
+            alert('Please enter your name');
+            return;
+        }
+        
+        // Check if user is host
+        isHost = playerName.toLowerCase() === 'chipgrace';
+        
+        // Emit join event to server
+        socket.emit('joinGame', {
+            name: playerName,
+            isHost: isHost
+        });
+        
+        console.log('Attempting to join game with name:', playerName); // Debug log
+        console.log('Emitting joinGame event');
+        socket.emit('joinGame', {
+            name: playerName,
+            isHost: isHost
+        });
+    }
+
+    socket.on('connect', () => {
+        console.log('Connected to server');
+    });
+
+    socket.on('joined', (data) => {
+        console.log('Joined game:', data);
+        playerId = data.playerId;
+        isHost = data.isHost;
+        
+        if (isHost) {
+            document.querySelectorAll('.host-controls').forEach(el => {
+                el.style.display = 'block';
+            });
+        }
+        
+        // Show waiting room
+        document.getElementById('waiting-room').style.display = 'block';
+    });
+
+    socket.on('updatePlayers', (updatedPlayers) => {
+        console.log('Players updated:', updatedPlayers);
+        players = updatedPlayers;
+        const playerList = document.getElementById('player-list');
+        if (playerList) {
+            playerList.innerHTML = updatedPlayers
+                .map(player => `
+                    <div class="player-name">
+                        ${player.name} ${player.isHost ? '(Host)' : ''}
+                    </div>
+                `)
+                .join('');
+        }
+    });
+
+    function startGame() {
+        if (!isHost) {
+            console.log('Only host can start game');
+            return;
+        }
+        console.log('Host starting game...');
+        socket.emit('startGame');
+    }
+
+    socket.on('gameStarted', (questionIndex) => {
+        console.log('Game started with question:', questionIndex);
+        currentQuestion = questionIndex;
+        showQuestion(); // This will show the first question
+    });
+
+    function showQuestion() {
+        console.log('Showing question:', currentQuestion);
+        
+        if (currentQuestion >= questions.length) {
+            console.log('Game over, showing final results');
+            showFinalResults();
+            return;
+        }
+
+        const question = questions[currentQuestion];
+        document.getElementById('question-text').textContent = question.question;
+        
+        // Reset answer buttons
+        document.querySelectorAll('.answer-btn').forEach((btn, index) => {
+            const answer = question.answers[index];
+            if (answer) {
+                btn.textContent = answer;
+                btn.style.display = 'block';
+            } else {
+                btn.style.display = 'none';
+            }
+        });
+
+        showScreen('question-screen');
+        startTimer();
+    }
+
+    // Add nextQuestion function
+    function nextQuestion() {
+        if (!isHost) {
+            console.log('Only host can proceed to next question');
+            return;
+        }
+        console.log('Moving to next question');
+        socket.emit('nextQuestion');
+    }
+
+    // Add socket listener for new question
+    socket.on('showQuestion', (questionIndex) => {
+        console.log('Showing next question:', questionIndex);
+        currentQuestion = questionIndex;
+        showQuestion();
+    });
+
+    function showScreen(screenId) {
+        console.log('Switching to screen:', screenId);
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+        const targetScreen = document.getElementById(screenId);
+        targetScreen.classList.add('active');
+    }
+
+    // Update submitAnswer function
+    function submitAnswer(answerIndex) {
+        if (!playerId) {
+            console.log('No player ID found');
+            return;
+        }
+        
+        console.log('Submitting answer:', answerIndex);
+        socket.emit('submitAnswer', {
+            answer: answerIndex,
+            timeLeft: timeLeft,
+            correctAnswer: questions[currentQuestion].correct
+        });
+    }
+
+    // Add showAnswerReveal function
+    function showAnswerReveal(players, correctAnswer) {
+        console.log('Showing answer reveal');
+        const question = questions[currentQuestion];
+        
+        // Show correct/incorrect answers
+        question.answers.forEach((answer, index) => {
+            const button = document.getElementById(`reveal-${index}`);
+            button.textContent = answer;
+            button.className = `answer-btn ${index === correctAnswer ? 'correct' : 'incorrect'}`;
+        });
+
+        // Show player results
+        const playerResults = document.getElementById('player-results');
+        playerResults.innerHTML = players
+            .map(player => `
+                <div class="player-result ${player.currentAnswer === correctAnswer ? 'correct' : 'wrong'}">
+                    <span>${player.name}</span>
+                    ${player.currentAnswer === correctAnswer ? '<span class="checkmark">✓</span>' : ''}
+                </div>
+            `)
+            .join('');
+
+        showScreen('answer-reveal');
+
+        // Automatically show leaderboard after 5 seconds
+        setTimeout(() => {
+            showLeaderboard(players);
+        }, 5000);
+    }
+
+    // Add showLeaderboard function
+    // Make sure only host sees the Next Question button
+    function showLeaderboard(players) {
+        console.log('Showing leaderboard');
+        const leaderboardBody = document.getElementById('leaderboard-body');
+        const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+        
+        leaderboardBody.innerHTML = sortedPlayers
+            .map((player, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${player.name}</td>
+                    <td>${player.score}</td>
+                </tr>
+            `)
+            .join('');
+
+        showScreen('leaderboard-screen');
+        
+        // Show/hide next question button based on host status
+        const nextButton = document.getElementById('next-btn');
+        if (nextButton) {
+            nextButton.style.display = isHost ? 'block' : 'none';
+        }
+    }
+
+    // Update timer function to automatically show results when time's up
+    function startTimer() {
+        timeLeft = 20;
+        updateTimerDisplay();
+        
+        if (timer) clearInterval(timer);
+        
+        timer = setInterval(() => {
+            timeLeft--;
+            updateTimerDisplay();
+            
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                // Time's up - submit -1 as answer and show results
+                submitAnswer(-1);
+            }
+        }, 1000);
+    }
+
+    // Add socket event listeners for results and leaderboard
+    socket.on('showResults', (data) => {
+        console.log('Received results:', data);
+        clearInterval(timer); // Stop timer if still running
+        showAnswerReveal(data.players, data.correctAnswer);
+    });
+
+    socket.on('showLeaderboard', (players) => {
+        console.log('Received leaderboard data');
+        showLeaderboard(players);
+    });
+
+    socket.on('connect', () => {
+        console.log('Connected to server');
+        document.getElementById('connection-status').textContent = 'Connected';
+        document.getElementById('connection-status').style.color = 'green';
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Disconnected from server');
+        document.getElementById('connection-status').textContent = 'Disconnected';
+        document.getElementById('connection-status').style.color = 'red';
+    });
+
+
+    </script>
+</body>
+</html>
