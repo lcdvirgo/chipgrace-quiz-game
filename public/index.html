@@ -186,6 +186,7 @@
     const countdownMusic = document.getElementById('countdown-music');
     const musicIcon = document.getElementById('music-icon');
     let isMuted = true;
+    let players = []; // Initialize as empty array
 
     function startTimer() {
         timeLeft = 30; // Changed from 20 to 30
@@ -594,27 +595,43 @@
     // Add showLeaderboard function
     // Make sure only host sees the Next Question button
     function showLeaderboard(players) {
-        console.log('Showing leaderboard');
-        const leaderboardBody = document.getElementById('leaderboard-body');
-        const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+        console.log('Showing leaderboard with players:', players);
         
-        leaderboardBody.innerHTML = sortedPlayers
-            .map((player, index) => `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-6 text-xl font-medium">${index + 1}</td>
-                    <td class="px-6 py-6 text-xl font-medium">${player.name}</td>
-                    <td class="px-6 py-6 text-xl font-medium">${player.score}</td>
-                </tr>
-            `)
-            .join('');
-
-        // Make sure next question button is only visible to host
-        const nextButton = document.getElementById('next-btn');
-        if (nextButton) {
-            nextButton.style.display = isHost ? 'inline-block' : 'none';
+        // Check if players is undefined or not an array
+        if (!players || !Array.isArray(players)) {
+            console.error('Invalid players data:', players);
+            players = []; // Initialize as empty array if undefined
         }
+        
+        const leaderboardBody = document.getElementById('leaderboard-body');
+        if (!leaderboardBody) {
+            console.error('Leaderboard body element not found');
+            return;
+        }
+        
+        try {
+            const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+            
+            leaderboardBody.innerHTML = sortedPlayers
+                .map((player, index) => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-6 text-xl font-medium">${index + 1}</td>
+                        <td class="px-6 py-6 text-xl font-medium">${player.name}</td>
+                        <td class="px-6 py-6 text-xl font-medium">${player.score}</td>
+                    </tr>
+                `)
+                .join('');
 
-        showScreen('leaderboard-screen');
+            // Make sure next question button is only visible to host
+            const nextButton = document.getElementById('next-btn');
+            if (nextButton) {
+                nextButton.style.display = isHost ? 'inline-block' : 'none';
+            }
+
+            showScreen('leaderboard-screen');
+        } catch (error) {
+            console.error('Error showing leaderboard:', error);
+        }
     }
 
     function showFinalResults(players) {
@@ -671,9 +688,12 @@
         showAnswerReveal(data.players, data.correctAnswer);
     });
 
-    socket.on('showLeaderboard', (players) => {
-        console.log('Received leaderboard data');
-        showLeaderboard(players);
+    socket.on('showLeaderboard', (receivedPlayers) => {
+        console.log('Received leaderboard data:', receivedPlayers);
+        if (receivedPlayers) {
+            players = receivedPlayers; // Update the global players array
+        }
+        showLeaderboard(receivedPlayers);
     });
 
     socket.on('connect', () => {
