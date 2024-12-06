@@ -29,6 +29,14 @@
             cursor: pointer;
             transition: opacity 0.3s;
         }
+        .answer-btn.selected {
+            opacity: 0.8;
+            transform: scale(0.98);
+            box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.3);
+        }
+        .answer-btn:not(.selected):hover {
+            transform: scale(1.02);
+        }
         
         .answer-grid {
             display: flex;
@@ -40,6 +48,12 @@
         #answer-1 { background: #1368CE; color: white; }
         #answer-2 { background: #D89E00; color: white; }
         #answer-3 { background: #26890C; color: white; }
+
+        /* Keep the original button colors but add selected state */
+        #answer-0.selected { background: #b91730; }  /* Darker red */
+        #answer-1.selected { background: #0f52a3; }  /* Darker blue */
+        #answer-2.selected { background: #ad7e00; }  /* Darker yellow */
+        #answer-3.selected { background: #1e6c09; }  /* Darker green */
         
         .incorrect {
             opacity: 0.3;
@@ -662,6 +676,17 @@
         if (!playerId) {
             console.log('No player ID found');
             return;
+        }
+        
+        // Remove selected class from all buttons
+        document.querySelectorAll('.answer-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+        
+        // Add selected class to clicked button
+        const selectedButton = document.getElementById(`answer-${answerIndex}`);
+        if (selectedButton) {
+            selectedButton.classList.add('selected');
         }
         
         console.log('Submitting answer:', answerIndex);
