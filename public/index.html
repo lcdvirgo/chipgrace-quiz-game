@@ -5,8 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js" integrity="sha384-Gr6Lu2Ajx28mzwyVR8CFkULdCU7kMlZ9UthllibdOSo6qAiN+yXNHqtgdTvFXMT4" crossorigin="anonymous"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
+    <!-- Add audio element -->
+    <audio id="lobby-music" loop preload="auto">
+        <source src="audio/lobby-music.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <div class="fixed bottom-4 right-4 flex items-center gap-4">
+        <button id="music-toggle" 
+                class="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
+                onclick="toggleMusic()">
+            <i id="music-icon" data-lucide="volume-x" class="w-6 h-6 text-gray-600"></i>
+        </button>
+        <div id="connection-status" class="px-3 py-2 rounded-lg bg-white shadow-md"></div>
+    </div>
     <!-- Registration Screen -->
     <div id="registration-screen" class="screen active p-4 md:p-8">
         <div class="max-w-2xl mx-auto">
@@ -539,7 +553,72 @@
         document.getElementById('connection-status').style.color = 'red';
     });
 
+    // Music control functionality
+    const lobbyMusic = document.getElementById('lobby-music');
+    const musicIcon = document.getElementById('music-icon');
+    let isMuted = true;
 
+    // Function to handle music toggle
+    async function toggleMusic() {
+        try {
+            if (isMuted) {
+                // Unmuting
+                lobbyMusic.muted = false;
+                // Reset the audio to the beginning
+                lobbyMusic.currentTime = 0;
+                // Try to play
+                await lobbyMusic.play();
+                musicIcon.setAttribute('data-lucide', 'music');
+            } else {
+                // Muting
+                lobbyMusic.muted = true;
+                musicIcon.setAttribute('data-lucide', 'volume-x');
+            }
+            isMuted = !isMuted;
+            lucide.createIcons();
+        } catch (error) {
+            console.error('Error toggling music:', error);
+            // If play fails, revert to muted state
+            isMuted = true;
+            lobbyMusic.muted = true;
+            musicIcon.setAttribute('data-lucide', 'volume-x');
+            lucide.createIcons();
+            alert('Unable to play music. Please try again.');
+        }
+    }
+
+    // Initialize the music state when page loads
+    window.addEventListener('load', () => {
+        // Set initial state
+        lobbyMusic.muted = true;
+        
+        // Add user interaction handler to start music
+        document.addEventListener('click', function initAudio() {
+            lobbyMusic.play().then(() => {
+                lobbyMusic.muted = true;
+                document.removeEventListener('click', initAudio);
+            }).catch(e => console.error('Initial play failed:', e));
+        }, { once: true });
+    });
+
+    // Stop music when game starts
+    socket.on('gameStarted', (questionIndex) => {
+        console.log('Game started with question:', questionIndex);
+        currentQuestion = questionIndex;
+        if (lobbyMusic) {
+            lobbyMusic.pause();
+            lobbyMusic.currentTime = 0;
+        }
+        showQuestion();
+    });
+
+    // Clean up when leaving
+    window.addEventListener('beforeunload', () => {
+        if (lobbyMusic) {
+            lobbyMusic.pause();
+            lobbyMusic.currentTime = 0;
+        }
+    });
     </script>
 </body>
 </html>
