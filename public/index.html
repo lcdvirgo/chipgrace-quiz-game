@@ -542,14 +542,17 @@
         const question = questions[currentQuestion];
         document.getElementById('question-text').textContent = question.question;
         
-        // Reset answer buttons
-        document.querySelectorAll('.answer-btn').forEach((btn, index) => {
-            const answer = question.answers[index];
-            if (answer) {
-                btn.textContent = answer;
-                btn.style.display = 'block';
-            } else {
-                btn.style.display = 'none';
+        // Hide all answer buttons first
+        document.querySelectorAll('.answer-btn').forEach(btn => {
+            btn.style.display = 'none';
+        });
+        
+        // Show and populate only the buttons we need
+        question.answers.forEach((answer, index) => {
+            const button = document.getElementById(`answer-${index}`);
+            if (button) {
+                button.textContent = answer;
+                button.style.display = 'block';
             }
         });
 
@@ -572,6 +575,11 @@
         console.log('Showing next question:', questionIndex);
         currentQuestion = questionIndex;
         showQuestion();
+
+        // Reset all players' answers
+        players.forEach(player => {
+            player.currentAnswer = null;
+        });
     });
 
     function showScreen(screenId) {
@@ -646,13 +654,13 @@
             `)
             .join('');
 
-        showScreen('leaderboard-screen');
-        
-        // Show/hide next question button based on host status
+        // Make sure next question button is only visible to host
         const nextButton = document.getElementById('next-btn');
         if (nextButton) {
-            nextButton.style.display = isHost ? 'block' : 'none';
+            nextButton.style.display = isHost ? 'inline-block' : 'none';
         }
+
+        showScreen('leaderboard-screen');
     }
 
     // Update timer function to automatically show results when time's up
