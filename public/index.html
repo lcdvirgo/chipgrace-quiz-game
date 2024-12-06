@@ -328,12 +328,17 @@
     </div>
 
     <script>
-    const socket = io(window.location.origin, {
-        transports: ['polling'], // Remove websocket, use only polling
-        path: '/.netlify/functions/server',
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000
+    // const socket = io(window.location.origin, {
+    //     transports: ['polling'], // Remove websocket, use only polling
+    //     path: '/.netlify/functions/server',
+    //     reconnection: true,
+    //     reconnectionAttempts: 5,
+    //     reconnectionDelay: 1000
+    // });
+
+    const socket = io('https://chipgrace-quiz-game.onrender.com', {
+        transports: ['websocket', 'polling'],
+        reconnection: true
     });
 
     // Add connection status logging

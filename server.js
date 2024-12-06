@@ -3,7 +3,13 @@ const app = express();
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: "https://chipgrace-quiz-game.netlify.app",
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
 
 // Serve static files from 'public' directory
 app.use(express.static('public'));
