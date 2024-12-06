@@ -490,36 +490,45 @@
 
         // Increment current question
         currentQuestion++;
-        console.log('Moving to question:', currentQuestion);
-
-        // Hide leaderboard screen
-        const leaderboardScreen = document.getElementById('leaderboard-screen');
-        if (leaderboardScreen) {
-            leaderboardScreen.classList.add('hidden');
-        }
-
-        // Show question screen
-        const questionScreen = document.getElementById('question-screen');
-        if (questionScreen) {
-            questionScreen.classList.remove('hidden');
-            questionScreen.classList.add('active');
-        }
-
-        // Show the new question
-        showQuestion();
-
-        // Notify server about the question change
-        socket.emit('nextQuestion');
         
-        console.log('Emitted nextQuestion event');
+        // Notify server about the question change with explicit question index
+        socket.emit('nextQuestion', { 
+            questionIndex: currentQuestion,
+            forceSync: true
+        });
+        
+        console.log('Emitted nextQuestion event for question:', currentQuestion);
     }
 
     // Update socket listener for new question
-    socket.on('showQuestion', (questionIndex) => {
-        console.log('Received showQuestion event with index:', questionIndex);
-        currentQuestion = questionIndex;
+    socket.on('showQuestion', (data) => {
+        console.log('Received showQuestion event:', data);
         
-        // Hide all screens first
+        // Always use the server's question index if provided
+        if (typeof data === 'object' && data.questionIndex !== undefined) {
+            currentQuestion = data.questionIndex;
+        } else if (typeof data === 'number') {
+            currentQuestion = data;
+        }
+        
+        console.log('Updating to question:', currentQuestion);
+        
+        // Force clean up any existing timers/timeouts
+        if (timer) {
+            clearInterval(timer);
+            timer = null;
+        }
+        if (leaderboardTimeout) {
+            clearTimeout(leaderboardTimeout);
+            leaderboardTimeout = null;
+        }
+        
+        // Reset player states
+        players.forEach(player => {
+            if (player) player.currentAnswer = null;
+        });
+        
+        // Hide all screens and show question screen
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
             screen.classList.add('hidden');
@@ -531,27 +540,9 @@
             questionScreen.classList.remove('hidden');
             questionScreen.classList.add('active');
             
-            // Update question content
-            const question = questions[currentQuestion];
-            if (question) {
-                document.getElementById('question-text').textContent = question.question;
-                
-                // Update answer buttons
-                question.answers.forEach((answer, index) => {
-                    const button = document.getElementById(`answer-${index}`);
-                    if (button) {
-                        button.style.display = 'block';
-                        button.textContent = answer;
-                        button.classList.remove('selected', 'correct', 'incorrect');
-                    }
-                });
-                
-                // Start new timer
-                startTimer();
-            }
+            // Show the question
+            showQuestion();
         }
-        
-        console.log('Question screen updated:', currentQuestion);
     });
 
     window.addEventListener('beforeunload', () => {
@@ -795,11 +786,12 @@
                 clearInterval(timer);
                 timer = null;
                 console.log('Time up, auto-submitting answer');
-                // Emit a time-up event to server
+                // Emit a time-up event to server with explicit question index
                 socket.emit('submitAnswer', {
                     answer: -1,
                     timeLeft: 0,
-                    correctAnswer: questions[currentQuestion].correct
+                    correctAnswer: questions[currentQuestion].correct,
+                    questionIndex: currentQuestion
                 });
             }
         }, 1000);
@@ -821,8 +813,16 @@
             countdownMusic.currentTime = 0;
         }
         
-        // Always show the answer reveal, even if time ran out
-        showAnswerReveal(data.players, data.correctAnswer);
+        // Force hide other screens
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.add('hidden');
+            screen.classList.remove('active');
+        });
+        
+        // Show answer reveal with small delay to ensure proper transition
+        setTimeout(() => {
+            showAnswerReveal(data.players, data.correctAnswer);
+        }, 100);
     });
 
     socket.on('showLeaderboard', (receivedPlayers) => {
