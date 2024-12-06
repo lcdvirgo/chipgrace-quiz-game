@@ -392,23 +392,37 @@
     function showQuestion() {
         console.log('Showing question:', currentQuestion);
 
+        // Safety check for question index
         if (currentQuestion >= questions.length) {
             console.log('Game over, showing final results');
             showFinalResults(players);
             return;
         }
 
-        // Get question screen and ensure it's visible
+        // Hide all screens first
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+            screen.classList.add('hidden');
+        });
+
+        // Get and show question screen
         const questionScreen = document.getElementById('question-screen');
+        if (!questionScreen) {
+            console.error('Question screen not found');
+            return;
+        }
+
         questionScreen.classList.remove('hidden');
         questionScreen.classList.add('active');
 
-        // Get and display current question
+        // Get current question
         const question = questions[currentQuestion];
+        
+        // Update question text
         const questionText = document.getElementById('question-text');
         questionText.textContent = question.question;
-        
-        // Reset and show answer buttons
+
+        // Update answer buttons
         question.answers.forEach((answer, index) => {
             const button = document.getElementById(`answer-${index}`);
             if (button) {
@@ -418,24 +432,16 @@
             }
         });
 
-        // Hide unused buttons
-        for (let i = question.answers.length; i < 4; i++) {
-            const button = document.getElementById(`answer-${i}`);
-            if (button) {
-                button.style.display = 'none';
-            }
-        }
-        
-        // Start countdown music for host
+        // Start the timer
+        startTimer();
+
+        // Play countdown music for host
         if (isHost && countdownMusic) {
             countdownMusic.currentTime = 0;
             countdownMusic.play().catch(e => console.error('Countdown music failed:', e));
         }
-        
-        // Start timer
-        startTimer();
-        
-        console.log('Question display completed');
+
+        console.log('Question display completed:', currentQuestion);
     }
 
     // Add nextQuestion function
@@ -453,9 +459,23 @@
             countdownMusic.currentTime = 0;
         }
 
-        // Emit the nextQuestion event
-        console.log('Emitting nextQuestion event');
-        socket.emit('nextQuestion', currentQuestion); // Send current question index to server
+        // Increment the question counter locally
+        currentQuestion++;
+        
+        // Check if we've reached the end
+        if (currentQuestion >= questions.length) {
+            console.log('Game over');
+            showFinalResults(players);
+            return;
+        }
+
+        console.log('Moving to question:', currentQuestion);
+        
+        // Force show the new question immediately
+        showQuestion();
+        
+        // Notify server about the question change
+        socket.emit('nextQuestion', { questionIndex: currentQuestion });
     }
 
     window.addEventListener('beforeunload', () => {
@@ -470,33 +490,33 @@
     });
 
     // Add socket listener for new question
-    socket.on('showQuestion', (questionIndex) => {
-        console.log('Received showQuestion event with index:', questionIndex);
+    socket.on('showQuestion', (data) => {
+        console.log('Received showQuestion event:', data);
         
-        // Update current question
-        currentQuestion = questionIndex;
+        // If server provides a question index, use it
+        if (data && typeof data.questionIndex !== 'undefined') {
+            currentQuestion = data.questionIndex;
+        }
         
-        // Reset player states
-        players.forEach(player => {
-            if (player) player.currentAnswer = null;
-        });
-
-        // Force clean up any existing timers
+        // Reset state
         if (timer) {
             clearInterval(timer);
             timer = null;
         }
         
-        // Hide all screens and show question screen
+        // Hide all screens
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
             screen.classList.add('hidden');
         });
         
-        // Show new question
-        showQuestion();
+        // Show and update the question screen
+        const questionScreen = document.getElementById('question-screen');
+        questionScreen.classList.remove('hidden');
+        questionScreen.classList.add('active');
         
-        console.log('Question display updated:', currentQuestion);
+        // Show the question
+        showQuestion();
     });
 
     function showScreen(screenId) {
