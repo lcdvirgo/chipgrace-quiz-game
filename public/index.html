@@ -165,6 +165,13 @@
             background: #ba5b38;
         }
 
+        #leaderboard-btn, #next-btn {
+            padding: 24px 32px;
+            color: #000000;
+            border: none;
+            border-radius: 12px;
+        }
+
         .btn {
             width: 100%;
             padding: 24px 32px;  /* Increased padding */
@@ -348,7 +355,7 @@
             <button class="answer-btn" id="reveal-3"></button>
         </div>
         <div id="player-results"></div>
-        <button onclick="showLeaderboard()" style="margin-top: 20px;">Show Leaderboard</button>
+        <button id="leaderboard-btn" showLeaderboard()" style="margin-top: 20px;">Show Leaderboard</button>
     </div>
 
     <!-- Leaderboard Screen -->
