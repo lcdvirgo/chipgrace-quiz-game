@@ -329,10 +329,11 @@
 
     <script>
     const socket = io(window.location.origin, {
-        path: '/.netlify/functions/server/socket.io',
-        transports: ['websocket', 'polling'],
-        autoConnect: true,
-        reconnection: true
+        transports: ['polling'], // Remove websocket, use only polling
+        path: '/.netlify/functions/server',
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
     });
 
     // Add connection status logging
