@@ -7,14 +7,16 @@ const { Server } = require("socket.io");
 // Initialize Socket.IO with CORS settings
 const io = new Server(server, {
     cors: {
-        origin: "https://chipgrace-quiz-game.netlify.app", // Your Netlify URL
+        origin: ["https://chipgrace-quiz-game.netlify.app", "http://localhost:3000"],
         methods: ["GET", "POST"],
         credentials: true
     }
 });
 
-// Serve static files
-app.use(express.static('public'));
+// Basic route for health check
+app.get('/', (req, res) => {
+    res.send('Server is running');
+});
 
 // Game state
 let gameState = {
@@ -28,10 +30,6 @@ let gameState = {
 // Socket connection handling
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
-
-    socket.onAny((eventName, ...args) => {
-        console.log(`Event received: ${eventName}`, args);
-    });
 
     // Handle player joining
     socket.on('joinGame', (data) => {
@@ -57,7 +55,7 @@ io.on('connection', (socket) => {
     // Handle game start
     socket.on('startGame', () => {
         const player = gameState.players[socket.id];
-        if (player && player.isHost) {
+        if (player?.isHost) {
             gameState.isStarted = true;
             gameState.currentQuestion = 0;
             gameState.phase = 'question';
@@ -105,7 +103,7 @@ io.on('connection', (socket) => {
     // Handle next question
     socket.on('nextQuestion', () => {
         const player = gameState.players[socket.id];
-        if (player && player.isHost) {
+        if (player?.isHost) {
             gameState.currentQuestion++;
             gameState.answeredCount = 0;
             gameState.phase = 'question';
@@ -144,10 +142,6 @@ server.listen(PORT, () => {
 });
 
 // Error handling
-server.on('error', (error) => {
-    console.error('Server error:', error);
-});
-
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
 });

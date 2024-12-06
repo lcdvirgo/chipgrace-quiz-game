@@ -1,17 +1,12 @@
 {
   "name": "chipgrace-quiz-game",
   "version": "1.0.0",
+  "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "@netlify/functions": "^2.8.2",
     "express": "^4.17.1",
     "socket.io": "^4.7.4"
-  },
-  "devDependencies": {
-    "netlify-cli": "^17.38.0",
-    "nodemon": "^2.0.15"
   }
 }
