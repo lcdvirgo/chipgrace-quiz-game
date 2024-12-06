@@ -111,9 +111,9 @@
         }
         .registration-container {
             text-align: center;
-            max-width: 600px;
-            margin: 0 auto;
+            max-width: 100%;
             padding: 20px;
+            margin: 0 auto;
         }
         
         .registration-container iframe {
@@ -124,32 +124,44 @@
         }
         
         .name-entry {
-            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;  /* Spacing between input and button */
             padding: 20px;
-            background: #f5f5f5;
-            border-radius: 8px;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
         }
         
         .name-entry input {
-            padding: 10px;
-            font-size: 16px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-right: 10px;
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            transition: border-color 0.3s;
+        }
+
+        .name-entry input:focus {
+            outline: none;
+            border-color: #ba5b38;
         }
         
-        .name-entry button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background: #1368CE;
+        .btn {
+            width: 100%;
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #ba5b38;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
+            transition: all 0.3s;
         }
-        
-        .name-entry button:hover {
-            background: #0D47A1;
+
+        .btn:hover {
+            background: #9a4b2d;
+            transform: translateY(-2px);
         }
         
         .waiting-message {
@@ -157,83 +169,137 @@
             color: #666;
         }
         .registration-container {
-    text-align: center;
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 40px 20px;
-}
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
 
-.name-entry {
-    margin: 40px 0;
-    padding: 30px;
-    background: #f8f8f8;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
+        .name-entry {
+            margin: 40px 0;
+            padding: 30px;
+            background: #f8f8f8;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
 
-.name-entry input {
-    width: 300px;
-    padding: 15px 20px;
-    font-size: 18px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    margin-right: 10px;
-    transition: border-color 0.3s;
-}
+        .name-entry input {
+            width: 300px;
+            padding: 15px 20px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-right: 10px;
+            transition: border-color 0.3s;
+        }
 
-.name-entry input:focus {
-    outline: none;
-    border-color: #1368CE;
-}
+        .name-entry input:focus {
+            outline: none;
+            border-color: #1368CE;
+        }
 
-.btn {
-    padding: 15px 30px;
-    font-size: 18px;
-    background: #1368CE;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s;
-}
+        .btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #1368CE;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
 
-.btn:hover {
-    background: #0D47A1;
-    transform: translateY(-2px);
-}
+        .btn:hover {
+            background: #0D47A1;
+            transform: translateY(-2px);
+        }
 
-.player-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-    margin: 20px 0;
-}
+        a, .btn, button {
+            color: #ba5b38;
+        }
 
-.player-name {
-    background: #f0f0f0;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-size: 16px;
-    animation: fadeIn 0.3s ease-in;
-}
+        .btn, button.btn {
+            color: white;
+        }
 
-.waiting-message {
-    color: #666;
-    margin: 20px 0;
-    font-style: italic;
-}
 
-.host-controls {
-    margin-top: 30px;
-    padding: 20px;
-    border-top: 1px solid #eee;
-}
+        .player-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+        .player-name {
+            background: #f0f0f0;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .waiting-message {
+            color: #666;
+            margin: 20px 0;
+            font-style: italic;
+        }
+
+        .host-controls {
+            margin-top: 30px;
+            padding: 20px;
+            border-top: 1px solid #eee;
+        }
+        h1 {
+            font-size: 28px;
+            margin-bottom: 40px;
+            padding: 0 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Media Queries for Responsive Design */
+        @media (max-width: 768px) {
+            .name-entry {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 24px;
+                margin-bottom: 30px;
+            }
+            
+            .name-entry input,
+            .btn {
+                font-size: 16px;
+                padding: 12px 20px;
+            }
+        }
+
+        /* Connection Status */
+        #connection-status {
+            color: #ba5b38;
+        }
+
+        /* Answer Buttons - Update Colors */
+        #answer-0, #answer-1, #answer-2, #answer-3,
+        .btn.start-game-btn, 
+        #next-btn,
+        button[onclick="showLeaderboard()"],
+        button[onclick="resetGame()"] {
+            background: #ba5b38;
+        }
+
+        #answer-0:hover, #answer-1:hover, #answer-2:hover, #answer-3:hover,
+        .btn.start-game-btn:hover, 
+        #next-btn:hover,
+        button[onclick="showLeaderboard()"]:hover,
+        button[onclick="resetGame()"]:hover {
+            background: #9a4b2d;
+        }
     </style>
 </head>
 <body>
@@ -422,7 +488,7 @@
         {
             question: "Who is the messier one?",
             answers: ["Grace", "Chip", "Both as messy"],
-            correct: 0
+            correct: 1
         },
         {
             question: "What is Grace's and Chip's favourite colour, respectively?",
