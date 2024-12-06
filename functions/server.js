@@ -105,16 +105,27 @@ io.on('connection', (socket) => {
         const player = gameState.players[socket.id];
         if (player?.isHost) {
             gameState.currentQuestion++;
-            gameState.answeredCount = 0;
-            gameState.phase = 'question';
             
-            Object.values(gameState.players).forEach(p => {
-                p.currentAnswer = null;
-            });
-            
-            io.emit('showQuestion', gameState.currentQuestion);
-            console.log('Moving to next question:', gameState.currentQuestion);
+            // Check if game is over
+            if (gameState.currentQuestion >= questions.length) {
+                gameState.phase = 'finished';
+                io.emit('gameOver', Object.values(gameState.players));
+            } else {
+                gameState.phase = 'question';
+                gameState.answeredCount = 0;
+                
+                Object.values(gameState.players).forEach(p => {
+                    p.currentAnswer = null;
+                });
+                
+                io.emit('showQuestion', gameState.currentQuestion);
+            }
         }
+    });
+
+    socket.on('gameOver', (players) => {
+        console.log('Game over, showing final results');
+        showFinalResults(players);
     });
 
     // Handle disconnection
