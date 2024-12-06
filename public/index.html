@@ -564,6 +564,12 @@
             return;
         }
         
+        // Stop the timer if it's still running
+        if (timer) {
+            clearInterval(timer);
+            timer = null;
+        }
+        
         // Remove selected class and reset colors from all buttons
         document.querySelectorAll('.answer-btn').forEach(btn => {
             btn.classList.remove('selected');
@@ -574,21 +580,23 @@
             if (btn.id === 'answer-3') btn.classList.replace('bg-green-700', 'bg-green-500');
         });
         
-        // Add selected class and darker color to clicked button
-        const selectedButton = document.getElementById(`answer-${answerIndex}`);
-        if (selectedButton) {
-            selectedButton.classList.add('selected');
-            // Add darker color based on button
-            if (selectedButton.id === 'answer-0') selectedButton.classList.replace('bg-red-500', 'bg-red-700');
-            if (selectedButton.id === 'answer-1') selectedButton.classList.replace('bg-blue-500', 'bg-blue-700');
-            if (selectedButton.id === 'answer-2') selectedButton.classList.replace('bg-yellow-500', 'bg-yellow-700');
-            if (selectedButton.id === 'answer-3') selectedButton.classList.replace('bg-green-500', 'bg-green-700');
+        // Only add selected styling if it's not a timeout
+        if (answerIndex >= 0) {
+            const selectedButton = document.getElementById(`answer-${answerIndex}`);
+            if (selectedButton) {
+                selectedButton.classList.add('selected');
+                // Add darker color based on button
+                if (selectedButton.id === 'answer-0') selectedButton.classList.replace('bg-red-500', 'bg-red-700');
+                if (selectedButton.id === 'answer-1') selectedButton.classList.replace('bg-blue-500', 'bg-blue-700');
+                if (selectedButton.id === 'answer-2') selectedButton.classList.replace('bg-yellow-500', 'bg-yellow-700');
+                if (selectedButton.id === 'answer-3') selectedButton.classList.replace('bg-green-500', 'bg-green-700');
+            }
         }
         
-        console.log('Submitting answer:', answerIndex);
+        console.log('Submitting answer:', answerIndex, 'with time left:', timeLeft);
         socket.emit('submitAnswer', {
             answer: answerIndex,
-            timeLeft: timeLeft,
+            timeLeft: timeLeft || 0,
             correctAnswer: questions[currentQuestion].correct
         });
     }
@@ -717,7 +725,7 @@
     
     // When the time is up
     function startTimer() {
-        timeLeft = 30; // Changed from 20 to 30
+        timeLeft = 30;
         updateTimerDisplay();
         
         if (timer) clearInterval(timer);
@@ -728,7 +736,14 @@
             
             if (timeLeft <= 0) {
                 clearInterval(timer);
-                submitAnswer(-1);
+                timer = null;
+                console.log('Time up, auto-submitting answer');
+                // Emit a time-up event to server
+                socket.emit('submitAnswer', {
+                    answer: -1,
+                    timeLeft: 0,
+                    correctAnswer: questions[currentQuestion].correct
+                });
             }
         }, 1000);
     }
@@ -736,7 +751,12 @@
     // Add socket event listeners for results and leaderboard
     socket.on('showResults', (data) => {
         console.log('Received results:', data);
-        clearInterval(timer); // Stop timer if still running
+        
+        // Stop timer if still running
+        if (timer) {
+            clearInterval(timer);
+            timer = null;
+        }
         
         // Stop countdown music if it's playing
         if (isHost && countdownMusic) {
@@ -744,6 +764,7 @@
             countdownMusic.currentTime = 0;
         }
         
+        // Always show the answer reveal, even if time ran out
         showAnswerReveal(data.players, data.correctAnswer);
     });
 
