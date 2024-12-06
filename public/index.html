@@ -27,7 +27,7 @@
                 <div id="player-list" class="flex flex-wrap justify-center gap-3"></div>
                 <p class="text-gray-600 italic text-center mt-6">Waiting for host to start the game...</p>
                 
-                <div id="host-controls" class="hidden mt-8 border-t border-gray-200 pt-6">
+                <div id="host-controls" class="invisible mt-8 border-t border-gray-200 pt-6">
                     <button onclick="startGame()"
                         class="w-full py-3 text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors">
                         Start Game
@@ -290,8 +290,9 @@
         isHost = data.isHost;
         
         if (isHost) {
-            document.querySelectorAll('.host-controls').forEach(el => {
-                el.style.display = 'block';
+            document.querySelectorAll('#host-controls').forEach(el => {
+                el.classList.remove('invisible');
+                el.classList.add('visible');
             });
         }
         
