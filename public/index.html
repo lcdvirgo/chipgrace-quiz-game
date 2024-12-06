@@ -488,16 +488,36 @@
             countdownMusic.currentTime = 0;
         }
 
-        // Increment current question
-        currentQuestion++;
-        console.log('Moving to question:', currentQuestion);
+        // Emit the nextQuestion event to server
+        socket.emit('nextQuestion');
+        console.log('Emitted nextQuestion event');
+    }
+
+    // Update socket listener for new question
+    socket.on('showQuestion', (questionIndex) => {
+        console.log('Received showQuestion event with index:', questionIndex);
         
-        // Force show the new question immediately
+        // Update current question for all clients
+        currentQuestion = questionIndex;
+        
+        // Reset all screens and show new question
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+            screen.classList.add('hidden');
+        });
+
+        // Show question screen
+        const questionScreen = document.getElementById('question-screen');
+        if (questionScreen) {
+            questionScreen.classList.remove('hidden');
+            questionScreen.classList.add('active');
+        }
+        
+        // Show the question
         showQuestion();
         
-        // Notify server about the question change
-        socket.emit('nextQuestion', { questionIndex: currentQuestion });
-    }
+        console.log('Updated to question:', currentQuestion);
+    });
 
     window.addEventListener('beforeunload', () => {
         if (lobbyMusic) {
@@ -564,10 +584,12 @@
             return;
         }
         
-        // Stop the timer if it's still running
-        if (timer) {
-            clearInterval(timer);
-            timer = null;
+        // Only stop timer if time is up
+        if (timeLeft <= 0) {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
         }
         
         // Remove selected class and reset colors from all buttons
