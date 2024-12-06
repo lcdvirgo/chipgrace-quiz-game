@@ -391,16 +391,6 @@
 
     function showQuestion() {
         console.log('Showing question:', currentQuestion);
-        
-        // Make sure we're displaying the correct screen
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-            screen.classList.add('hidden');
-        });
-        
-        const questionScreen = document.getElementById('question-screen');
-        questionScreen.classList.remove('hidden');
-        questionScreen.classList.add('active');
 
         if (currentQuestion >= questions.length) {
             console.log('Game over, showing final results');
@@ -408,25 +398,44 @@
             return;
         }
 
+        // Get question screen and ensure it's visible
+        const questionScreen = document.getElementById('question-screen');
+        questionScreen.classList.remove('hidden');
+        questionScreen.classList.add('active');
+
+        // Get and display current question
         const question = questions[currentQuestion];
-        document.getElementById('question-text').textContent = question.question;
+        const questionText = document.getElementById('question-text');
+        questionText.textContent = question.question;
         
         // Reset and show answer buttons
-        document.querySelectorAll('.answer-btn').forEach((btn, index) => {
-            btn.style.display = index < question.answers.length ? 'block' : 'none';
-            if (index < question.answers.length) {
-                btn.textContent = question.answers[index];
-                btn.classList.remove('selected', 'correct', 'incorrect');
+        question.answers.forEach((answer, index) => {
+            const button = document.getElementById(`answer-${index}`);
+            if (button) {
+                button.style.display = 'block';
+                button.textContent = answer;
+                button.classList.remove('selected', 'correct', 'incorrect');
             }
         });
+
+        // Hide unused buttons
+        for (let i = question.answers.length; i < 4; i++) {
+            const button = document.getElementById(`answer-${i}`);
+            if (button) {
+                button.style.display = 'none';
+            }
+        }
         
-        // Start the timer and countdown music
+        // Start countdown music for host
         if (isHost && countdownMusic) {
             countdownMusic.currentTime = 0;
             countdownMusic.play().catch(e => console.error('Countdown music failed:', e));
         }
         
+        // Start timer
         startTimer();
+        
+        console.log('Question display completed');
     }
 
     // Add nextQuestion function
@@ -443,22 +452,10 @@
             countdownMusic.pause();
             countdownMusic.currentTime = 0;
         }
-        
-        // Increment current question
-        currentQuestion++;
-        console.log('Moving to question:', currentQuestion);
-        
-        // Check if we've reached the end of questions
-        if (currentQuestion >= questions.length) {
-            console.log('Game over, showing final results');
-            showFinalResults(players);
-            return;
-        }
-        
-        // Simply emit the nextQuestion event - let server handle question index
-        socket.emit('nextQuestion');
-        
-        console.log('Emitted nextQuestion event');
+
+        // Emit the nextQuestion event
+        console.log('Emitting nextQuestion event');
+        socket.emit('nextQuestion', currentQuestion); // Send current question index to server
     }
 
     window.addEventListener('beforeunload', () => {
@@ -475,26 +472,31 @@
     // Add socket listener for new question
     socket.on('showQuestion', (questionIndex) => {
         console.log('Received showQuestion event with index:', questionIndex);
+        
+        // Update current question
         currentQuestion = questionIndex;
         
         // Reset player states
         players.forEach(player => {
             if (player) player.currentAnswer = null;
         });
+
+        // Force clean up any existing timers
+        if (timer) {
+            clearInterval(timer);
+            timer = null;
+        }
         
-        // Hide all screens
+        // Hide all screens and show question screen
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
             screen.classList.add('hidden');
         });
         
-        // Show the question screen
-        const questionScreen = document.getElementById('question-screen');
-        questionScreen.classList.remove('hidden');
-        questionScreen.classList.add('active');
-        
-        // Display the question
+        // Show new question
         showQuestion();
+        
+        console.log('Question display updated:', currentQuestion);
     });
 
     function showScreen(screenId) {
