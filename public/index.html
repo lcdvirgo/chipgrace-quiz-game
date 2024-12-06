@@ -23,6 +23,10 @@
         <source src="audio/lobby-music.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
+    <audio id="countdown-music" preload="auto">
+        <source src="audio/countdown-30.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
     <div class="fixed bottom-4 right-4 flex items-center gap-4">
         <button id="music-toggle" 
                 class="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
@@ -178,6 +182,7 @@
     let timer;
     let timeLeft;
     const lobbyMusic = document.getElementById('lobby-music');
+    const countdownMusic = document.getElementById('countdown-music');
     const musicIcon = document.getElementById('music-icon');
     let isMuted = true;
 
@@ -408,6 +413,12 @@
         document.getElementById('question-screen').classList.remove('hidden');
         document.getElementById('question-screen').classList.add('active');
         
+        // Play countdown music only for host
+        if (isHost && countdownMusic) {
+            countdownMusic.currentTime = 0; // Reset to start
+            countdownMusic.play().catch(e => console.error('Countdown music failed:', e));
+        }
+        
         startTimer();
     }
 
@@ -417,9 +428,27 @@
             console.log('Only host can proceed to next question');
             return;
         }
+        
+        // Stop countdown music if it's still playing
+        if (countdownMusic) {
+            countdownMusic.pause();
+            countdownMusic.currentTime = 0;
+        }
+        
         console.log('Moving to next question');
         socket.emit('nextQuestion');
     }
+
+    window.addEventListener('beforeunload', () => {
+        if (lobbyMusic) {
+            lobbyMusic.pause();
+            lobbyMusic.currentTime = 0;
+        }
+        if (countdownMusic) {
+            countdownMusic.pause();
+            countdownMusic.currentTime = 0;
+        }
+    });
 
     // Add socket listener for new question
     socket.on('showQuestion', (questionIndex) => {
@@ -457,15 +486,25 @@
             return;
         }
         
-        // Remove selected class from all buttons
+        // Remove selected class and reset colors from all buttons
         document.querySelectorAll('.answer-btn').forEach(btn => {
             btn.classList.remove('selected');
+            // Reset to original colors
+            if (btn.id === 'answer-0') btn.classList.replace('bg-red-700', 'bg-red-500');
+            if (btn.id === 'answer-1') btn.classList.replace('bg-blue-700', 'bg-blue-500');
+            if (btn.id === 'answer-2') btn.classList.replace('bg-yellow-700', 'bg-yellow-500');
+            if (btn.id === 'answer-3') btn.classList.replace('bg-green-700', 'bg-green-500');
         });
         
-        // Add selected class to clicked button
+        // Add selected class and darker color to clicked button
         const selectedButton = document.getElementById(`answer-${answerIndex}`);
         if (selectedButton) {
             selectedButton.classList.add('selected');
+            // Add darker color based on button
+            if (selectedButton.id === 'answer-0') selectedButton.classList.replace('bg-red-500', 'bg-red-700');
+            if (selectedButton.id === 'answer-1') selectedButton.classList.replace('bg-blue-500', 'bg-blue-700');
+            if (selectedButton.id === 'answer-2') selectedButton.classList.replace('bg-yellow-500', 'bg-yellow-700');
+            if (selectedButton.id === 'answer-3') selectedButton.classList.replace('bg-green-500', 'bg-green-700');
         }
         
         console.log('Submitting answer:', answerIndex);
@@ -594,6 +633,13 @@
     socket.on('showResults', (data) => {
         console.log('Received results:', data);
         clearInterval(timer); // Stop timer if still running
+        
+        // Stop countdown music if it's playing
+        if (isHost && countdownMusic) {
+            countdownMusic.pause();
+            countdownMusic.currentTime = 0;
+        }
+        
         showAnswerReveal(data.players, data.correctAnswer);
     });
 
