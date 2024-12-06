@@ -125,34 +125,26 @@
         }
         .registration-container {
             text-align: center;
-            max-width: 100%;
-            padding: 20px;
-            margin: 0 auto;
-        }
-        
-        .registration-container iframe {
-            margin: 20px 0;
-            border: none;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 500px;  /* Increased max-width */
+            margin: 40px auto;
+            padding: 40px 20px;
         }
         
         .name-entry {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;  /* Spacing between input and button */
-            padding: 20px;
             width: 100%;
             max-width: 400px;
             margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;  /* Space between input and button */
         }
         
         .name-entry input {
             width: 100%;
-            padding: 15px 20px;
-            font-size: 18px;
+            padding: 20px 24px;  /* Increased padding */
+            font-size: 24px;     /* Larger font */
             border: 2px solid #ddd;
-            border-radius: 8px;
+            border-radius: 12px;
             transition: border-color 0.3s;
         }
 
@@ -162,16 +154,18 @@
         }
         
         .btn {
+            .btn {
             width: 100%;
-            padding: 15px 30px;
-            font-size: 18px;
+            padding: 24px 32px;  /* Increased padding */
+            font-size: 24px;     /* Larger font */
             background: #ba5b38;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
             transition: all 0.3s;
         }
+
 
         .btn:hover {
             background: #9a4b2d;
@@ -265,9 +259,8 @@
             border-top: 1px solid #eee;
         }
         h1 {
-            font-size: 28px;
-            margin-bottom: 40px;
-            padding: 0 20px;
+            font-size: 36px;
+            margin-bottom: 48px;
         }
 
         @keyframes fadeIn {
@@ -275,26 +268,8 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Media Queries for Responsive Design */
-        @media (max-width: 768px) {
-            .name-entry {
-                padding: 10px;
-            }
-            
-            h1 {
-                font-size: 24px;
-                margin-bottom: 30px;
-            }
-            
-            .name-entry input,
-            .btn {
-                font-size: 16px;
-                padding: 12px 20px;
-            }
-        }
-
-        /* Connection Status */
-        #connection-status {
+                /* Connection Status */
+                #connection-status {
             color: #ba5b38;
         }
 
@@ -313,6 +288,24 @@
         button[onclick="showLeaderboard()"]:hover,
         button[onclick="resetGame()"]:hover {
             background: #9a4b2d;
+        }
+
+        /* Media Queries for Responsive Design */
+        @media (max-width: 768px) {
+            .registration-container {
+                padding: 20px;
+            }
+            
+            .name-entry input,
+            .btn {
+                font-size: 20px;
+                padding: 20px 24px;
+            }
+            
+            h1 {
+                font-size: 28px;
+                margin-bottom: 36px;
+            }
         }
     </style>
 </head>
