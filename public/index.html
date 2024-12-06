@@ -185,6 +185,7 @@
     const countdownMusic = document.getElementById('countdown-music');
     const musicIcon = document.getElementById('music-icon');
     let isMuted = true;
+    let leaderboardTimeout = null;
 
     function startTimer() {
         timeLeft = 30; // Changed from 20 to 30
@@ -390,6 +391,10 @@
     });
 
     function showQuestion() {
+        if (leaderboardTimeout) {
+            clearTimeout(leaderboardTimeout);
+            leaderboardTimeout = null;
+        }
         console.log('Showing question:', currentQuestion);
 
         // Safety check for question index
@@ -471,22 +476,20 @@
             return;
         }
         
+        // Clear any existing timeouts
+        if (leaderboardTimeout) {
+            clearTimeout(leaderboardTimeout);
+            leaderboardTimeout = null;
+        }
+        
         // Stop countdown music if it's still playing
         if (countdownMusic) {
             countdownMusic.pause();
             countdownMusic.currentTime = 0;
         }
 
-        // Increment the question counter locally
+        // Increment current question
         currentQuestion++;
-        
-        // Check if we've reached the end
-        if (currentQuestion >= questions.length) {
-            console.log('Game over');
-            showFinalResults(players);
-            return;
-        }
-
         console.log('Moving to question:', currentQuestion);
         
         // Force show the new question immediately
@@ -592,6 +595,12 @@
 
     // Add showAnswerReveal function
     function showAnswerReveal(players, correctAnswer) {
+        // Clear any existing timeout first
+        if (leaderboardTimeout) {
+            clearTimeout(leaderboardTimeout);
+            leaderboardTimeout = null;
+        }
+
         console.log('Showing answer reveal');
         const question = questions[currentQuestion];
         
@@ -632,9 +641,10 @@
 
         showScreen('answer-reveal');
 
-        // Increase reveal time from 5 to 8 seconds
-        setTimeout(() => {
+        // Set new timeout for leaderboard
+        leaderboardTimeout = setTimeout(() => {
             showLeaderboard(players);
+            leaderboardTimeout = null; // Clear the reference
         }, 8000);
     }
 
