@@ -109,28 +109,17 @@
     </div>
 
     <!-- Leaderboard Screen -->
-    <div id="leaderboard-screen" class="screen hidden p-4 md:p-8">
-        <div class="max-w-2xl mx-auto">
-            <h2 class="text-2xl font-bold text-center mb-6">Leaderboard</h2>
-            
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-gray-600">Rank</th>
-                            <th class="px-6 py-3 text-left text-gray-600">Player</th>
-                            <th class="px-6 py-3 text-left text-gray-600">Score</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboard-body" class="divide-y divide-gray-200"></tbody>
-                </table>
-            </div>
-
-            <button id="next-btn" onclick="nextQuestion()"
-                class="mt-8 w-full py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
-                Next Question
-            </button>
-        </div>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-4 text-xl font-semibold text-left text-gray-600">Rank</th>
+                    <th class="px-6 py-4 text-xl font-semibold text-left text-gray-600">Player</th>
+                    <th class="px-6 py-4 text-xl font-semibold text-left text-gray-600">Score</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-body" class="divide-y divide-gray-200"></tbody>
+        </table>
     </div>
 
     <!-- Final Results Screen -->
@@ -572,10 +561,10 @@
         
         leaderboardBody.innerHTML = sortedPlayers
             .map((player, index) => `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${player.name}</td>
-                    <td>${player.score}</td>
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-6 text-xl font-medium">${index + 1}</td>
+                    <td class="px-6 py-6 text-xl font-medium">${player.name}</td>
+                    <td class="px-6 py-6 text-xl font-medium">${player.score}</td>
                 </tr>
             `)
             .join('');
