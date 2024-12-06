@@ -399,6 +399,12 @@
             return;
         }
 
+        // Clear any existing timers first
+        if (timer) {
+            clearInterval(timer);
+            timer = null;
+        }
+
         // Hide all screens first
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
@@ -422,7 +428,7 @@
         const questionText = document.getElementById('question-text');
         questionText.textContent = question.question;
 
-        // Update answer buttons
+        // Reset and update answer buttons
         question.answers.forEach((answer, index) => {
             const button = document.getElementById(`answer-${index}`);
             if (button) {
@@ -432,8 +438,20 @@
             }
         });
 
-        // Start the timer
-        startTimer();
+        // Reset timer state
+        timeLeft = 30;
+        updateTimerDisplay();
+
+        // Start a fresh timer
+        timer = setInterval(() => {
+            timeLeft--;
+            updateTimerDisplay();
+            
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                submitAnswer(-1); // Time's up
+            }
+        }, 1000);
 
         // Play countdown music for host
         if (isHost && countdownMusic) {
