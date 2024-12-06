@@ -215,6 +215,13 @@
         if (musicToggleButton) {
             musicToggleButton.addEventListener('click', toggleMusic);
         }
+
+        // Add next question button listener
+        const nextButton = document.getElementById('next-btn');
+        if (nextButton) {
+            nextButton.addEventListener('click', nextQuestion);
+            console.log('Added next question button listener');
+        }
     });
 
     function joinGame() {
@@ -437,9 +444,21 @@
             countdownMusic.currentTime = 0;
         }
         
+        // Make sure all players have their answers reset
+        players.forEach(player => {
+            player.currentAnswer = null;
+        });
+        
+        // Log before emitting
+        console.log('Current question before next:', currentQuestion);
+        console.log('Is host:', isHost);
+        console.log('Socket connected:', socket.connected);
+        
         // Emit the nextQuestion event
-        console.log('Emitting nextQuestion event');
         socket.emit('nextQuestion');
+        
+        // Log after emitting
+        console.log('Emitted nextQuestion event');
     }
 
     window.addEventListener('beforeunload', () => {
@@ -458,13 +477,17 @@
         console.log('Received showQuestion event with index:', questionIndex);
         currentQuestion = questionIndex;
         
-        // Reset all players' answers
-        players.forEach(player => {
-            player.currentAnswer = null;
+        // Force all screens to hide first
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+            screen.classList.add('hidden');
         });
         
-        // Show the new question
+        // Show new question
         showQuestion();
+        
+        // Log the screen change
+        console.log('Switched to question screen:', currentQuestion);
     });
 
     function showScreen(screenId) {
