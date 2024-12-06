@@ -328,8 +328,11 @@
     </div>
 
     <script>
-    const socket = io('http://localhost:8888', {
-        transports: ['websocket', 'polling']
+    const socket = io(window.location.origin, {
+        path: '/.netlify/functions/server/socket.io',
+        transports: ['websocket', 'polling'],
+        autoConnect: true,
+        reconnection: true
     });
 
     // Add connection status logging

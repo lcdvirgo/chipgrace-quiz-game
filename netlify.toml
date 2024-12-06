@@ -4,9 +4,14 @@
 
 [[redirects]]
   from = "/socket.io/*"
-  to = "http://localhost:3000/socket.io/:splat"
+  to = "/.netlify/functions/server/socket.io/:splat"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
 
 [dev]
   framework = "#custom"
@@ -14,3 +19,4 @@
   port = 8888
   targetPort = 3000
   publish = "public"
+

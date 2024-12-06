@@ -80,6 +80,34 @@ exports.handler = async (event, context) => {
     };
 };
 
+// Add better connection handling
+socket.on('connect', () => {
+    console.log('Connected to server with ID:', socket.id);
+    document.getElementById('connection-status').textContent = 'Connected';
+    document.getElementById('connection-status').style.color = 'green';
+});
+
+socket.on('connect_error', (error) => {
+    console.error('Connection error:', error);
+    document.getElementById('connection-status').textContent = 'Connection Error';
+    document.getElementById('connection-status').style.color = 'red';
+});
+
+socket.on('disconnect', () => {
+    console.log('Disconnected from server');
+    document.getElementById('connection-status').textContent = 'Disconnected';
+    document.getElementById('connection-status').style.color = 'orange';
+});
+
+// Add reconnection handling
+socket.on('reconnect_attempt', () => {
+    console.log('Attempting to reconnect...');
+});
+
+socket.on('reconnect', () => {
+    console.log('Reconnected successfully');
+});
+
 // Socket connection handling
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
