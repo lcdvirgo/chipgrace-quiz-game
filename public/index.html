@@ -170,9 +170,9 @@
     let timeLeft;
 
     function startTimer() {
-        timeLeft = 20;
+        timeLeft = 30; // Changed from 20 to 30
         updateTimerDisplay();
-    
+        
         if (timer) clearInterval(timer);
         
         timer = setInterval(() => {
@@ -181,7 +181,7 @@
             
             if (timeLeft <= 0) {
                 clearInterval(timer);
-                submitAnswer(-1); // Time's up
+                submitAnswer(-1);
             }
         }, 1000);
     }
@@ -191,7 +191,7 @@
         const timerProgress = document.querySelector('.timer-progress');
         if (timerText && timerProgress) {
             timerText.textContent = timeLeft;
-            const percentage = (timeLeft / 20) * 100;
+            const percentage = (timeLeft / 30) * 100; // Changed from 20 to 30
             timerProgress.style.width = `${percentage}%`;
         }
     }
@@ -341,7 +341,19 @@
     socket.on('gameStarted', (questionIndex) => {
         console.log('Game started with question:', questionIndex);
         currentQuestion = questionIndex;
-        showQuestion(); // This will show the first question
+        
+        // Stop lobby music if playing
+        if (lobbyMusic) {
+            lobbyMusic.pause();
+            lobbyMusic.currentTime = 0;
+        }
+        
+        // Make sure we're showing the question screen
+        document.getElementById('registration-screen').classList.remove('active');
+        document.getElementById('registration-screen').classList.add('hidden');
+        
+        // Show the question
+        showQuestion();
     });
 
     function showQuestion() {
@@ -367,10 +379,15 @@
             if (button) {
                 button.textContent = answer;
                 button.style.display = 'block';
+                // Reset any previous styling
+                button.classList.remove('selected', 'correct', 'incorrect');
             }
         });
 
-        showScreen('question-screen');
+        // Ensure question screen is visible
+        document.getElementById('question-screen').classList.remove('hidden');
+        document.getElementById('question-screen').classList.add('active');
+        
         startTimer();
     }
 
@@ -398,11 +415,19 @@
 
     function showScreen(screenId) {
         console.log('Switching to screen:', screenId);
+        // Hide all screens
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
+            screen.classList.add('hidden');
         });
+        // Show target screen
         const targetScreen = document.getElementById(screenId);
-        targetScreen.classList.add('active');
+        if (targetScreen) {
+            targetScreen.classList.remove('hidden');
+            targetScreen.classList.add('active');
+        } else {
+            console.error('Screen not found:', screenId);
+        }
     }
 
     // Update submitAnswer function
