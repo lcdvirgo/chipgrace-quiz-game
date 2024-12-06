@@ -709,9 +709,6 @@
     function showLeaderboard(receivedPlayers) {
         console.log('Showing leaderboard with players:', receivedPlayers);
         
-        // Use the received players instead of global players array
-        const playersToShow = receivedPlayers || [];
-        
         const leaderboardBody = document.getElementById('leaderboard-body');
         if (!leaderboardBody) {
             console.error('Leaderboard body element not found');
@@ -719,7 +716,7 @@
         }
         
         try {
-            const sortedPlayers = [...playersToShow].sort((a, b) => b.score - a.score);
+            const sortedPlayers = [...receivedPlayers].sort((a, b) => b.score - a.score);
             
             leaderboardBody.innerHTML = sortedPlayers
                 .map((player, index) => `
@@ -731,12 +728,18 @@
                 `)
                 .join('');
 
-            // Make sure next question button is properly set up for host
+            // Set up next question button
             const nextButton = document.getElementById('next-btn');
             if (nextButton) {
                 if (isHost) {
                     nextButton.style.display = 'block';
-                    nextButton.onclick = nextQuestion;  // Directly assign the event handler
+                    // Remove any existing listeners
+                    nextButton.replaceWith(nextButton.cloneNode(true));
+                    // Add fresh click listener
+                    document.getElementById('next-btn').addEventListener('click', () => {
+                        console.log('Next button clicked');
+                        nextQuestion();
+                    });
                     console.log('Next button set up for host');
                 } else {
                     nextButton.style.display = 'none';
