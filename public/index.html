@@ -120,7 +120,12 @@
             </thead>
             <tbody id="leaderboard-body" class="divide-y divide-gray-200"></tbody>
         </table>
-    </div>
+        <button id="next-btn" 
+                onclick="nextQuestion()"
+                class="mt-8 w-full py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+            Next Question
+        </button>
+    </div>    
 
     <!-- Final Results Screen -->
     <div id="final-screen" class="screen hidden p-4 md:p-8">
@@ -372,6 +377,16 @@
 
     function showQuestion() {
         console.log('Showing question:', currentQuestion);
+        
+        // Make sure we're displaying the correct screen
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+            screen.classList.add('hidden');
+        });
+        
+        const questionScreen = document.getElementById('question-screen');
+        questionScreen.classList.remove('hidden');
+        questionScreen.classList.add('active');
 
         if (currentQuestion >= questions.length) {
             console.log('Game over, showing final results');
@@ -382,29 +397,18 @@
         const question = questions[currentQuestion];
         document.getElementById('question-text').textContent = question.question;
         
-        // Hide all answer buttons first
-        document.querySelectorAll('.answer-btn').forEach(btn => {
-            btn.style.display = 'none';
-        });
-        
-        // Show and populate only the buttons we need
-        question.answers.forEach((answer, index) => {
-            const button = document.getElementById(`answer-${index}`);
-            if (button) {
-                button.textContent = answer;
-                button.style.display = 'block';
-                // Reset any previous styling
-                button.classList.remove('selected', 'correct', 'incorrect');
+        // Reset and show answer buttons
+        document.querySelectorAll('.answer-btn').forEach((btn, index) => {
+            btn.style.display = index < question.answers.length ? 'block' : 'none';
+            if (index < question.answers.length) {
+                btn.textContent = question.answers[index];
+                btn.classList.remove('selected', 'correct', 'incorrect');
             }
         });
-
-        // Ensure question screen is visible
-        document.getElementById('question-screen').classList.remove('hidden');
-        document.getElementById('question-screen').classList.add('active');
         
-        // Play countdown music only for host
+        // Start the timer and countdown music
         if (isHost && countdownMusic) {
-            countdownMusic.currentTime = 0; // Reset to start
+            countdownMusic.currentTime = 0;
             countdownMusic.play().catch(e => console.error('Countdown music failed:', e));
         }
         
@@ -413,6 +417,8 @@
 
     // Add nextQuestion function
     function nextQuestion() {
+        console.log('Next Question button clicked');
+        
         if (!isHost) {
             console.log('Only host can proceed to next question');
             return;
@@ -424,7 +430,8 @@
             countdownMusic.currentTime = 0;
         }
         
-        console.log('Moving to next question');
+        // Emit the nextQuestion event
+        console.log('Emitting nextQuestion event');
         socket.emit('nextQuestion');
     }
 
@@ -441,14 +448,16 @@
 
     // Add socket listener for new question
     socket.on('showQuestion', (questionIndex) => {
-        console.log('Showing next question:', questionIndex);
+        console.log('Received showQuestion event with index:', questionIndex);
         currentQuestion = questionIndex;
-        showQuestion();
-
+        
         // Reset all players' answers
         players.forEach(player => {
             player.currentAnswer = null;
         });
+        
+        // Show the new question
+        showQuestion();
     });
 
     function showScreen(screenId) {
