@@ -162,753 +162,170 @@
     <div id="connection-status" class="fixed bottom-4 right-4 px-3 py-2 rounded-lg bg-white shadow-md"></div>
 
     <script>
-        const socket = io('https://chipgrace-quiz-game.onrender.com', {
-        transports: ['websocket', 'polling'],
-        reconnection: true
-    });
-
-    // Add connection status logging
-    socket.on('connect', () => {
-        console.log('Connected to server with ID:', socket.id);
-    });
-
-    socket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
-    });
+    // client.js
+    const socket = io('https://chipgrace-quiz-game.onrender.com');
     let playerId = null;
     let isHost = false;
-    let currentQuestion = 0;
-    let players = []; // Only declare once here
-    let timer;
-    let timeLeft;
-    const lobbyMusic = document.getElementById('lobby-music');
-    const countdownMusic = document.getElementById('countdown-music');
-    const musicIcon = document.getElementById('music-icon');
-    let isMuted = true;
-    let leaderboardTimeout = null;
 
-    function startTimer() {
-        timeLeft = 30; // Changed from 20 to 30
-        updateTimerDisplay();
+    // Join game handler
+    document.getElementById('join-game-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('player-name').value;
+        const isHostInput = name.toLowerCase() === 'chipgrace';
         
-        if (timer) clearInterval(timer);
-        
-        timer = setInterval(() => {
-            timeLeft--;
-            updateTimerDisplay();
-            
-            if (timeLeft <= 0) {
-                clearInterval(timer);
-                submitAnswer(-1);
-            }
-        }, 1000);
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const joinButton = document.getElementById('joingame-btn');
-        if (joinButton) {
-            joinButton.addEventListener('click', joinGame);
-        }
-
-        // Also add other button listeners here
-        const musicToggleButton = document.getElementById('music-toggle');
-        if (musicToggleButton) {
-            musicToggleButton.addEventListener('click', toggleMusic);
-        }
-    });
-
-    // Add event delegation for the next button since it might not exist when page loads
-    document.addEventListener('click', function(event) {
-        if (event.target && event.target.id === 'next-btn') {
-            console.log('Next button clicked through delegation');
-            nextQuestion();
-        }
-    });
-
-    function joinGame() {
-        const playerName = document.getElementById('player-name').value.trim();
-        
-        if (!playerName) {
-            alert('Please enter your name');
-            return;
-        }
-        
-        // Check if user is host
-        isHost = playerName.toLowerCase() === 'chipgrace';
-        
-        // Emit join event to server
         socket.emit('joinGame', {
-            name: playerName,
-            isHost: isHost
+            name: name,
+            isHost: isHostInput
         });
-        
-        console.log('Attempting to join game with name:', playerName);
-    }
-
-    function updateTimerDisplay() {
-        const timerText = document.querySelector('.timer-text');
-        const timerProgress = document.querySelector('.timer-progress');
-        if (timerText && timerProgress) {
-            timerText.textContent = timeLeft;
-            const percentage = (timeLeft / 30) * 100; // Changed from 20 to 30
-            timerProgress.style.width = `${percentage}%`;
-        }
-    }
-
-    const questions = [
-        {
-            question: "What colour was Chip and Grace's outfit on their first date?",
-            answers: ["Linen beige", "White", "Sage green"],
-            correct: 2
-        },
-        {
-            question: "Chip and Grace's favourite movie for 2024?",
-            answers: ["The Red One", "Deadpool & Wolverine", "Inside Out 2"],
-            correct: 1
-        },
-        {
-            question: "Chip and Grace's shared dream vacation?",
-            answers: ["South Korea", "Kyoto", "Switzerland", "All of the above"],
-            correct: 1
-        },
-        {
-            question: "Chip and Grace's favourite mutual hobby?",
-            answers: ["A walk in the park", "Sing to our hearts' content! - Karaoke", "Eating"],
-            correct: 0
-        },
-        {
-            question: "How long did we see each other before officially dating?",
-            answers: ["22 days", "32 days", "42 days"],
-            correct: 2
-        },
-        {
-            question: "What was Grace's first impression of Chip?",
-            answers: ["Sweet", "Intense", "Kind"],
-            correct: 1
-        },
-        {
-            question: "What was Chip's first impression of Grace?",
-            answers: ["Ice queen", "Shy", "Obedient"],
-            correct: 2
-        },
-        {
-            question: "Who is the messier one?",
-            answers: ["Grace", "Chip", "Both as messy"],
-            correct: 1
-        },
-        {
-            question: "What is Grace's and Chip's favourite colour, respectively?",
-            answers: ["Sage green, sage green", "Pink, sage green", "White, orange", "White, beige"],
-            correct: 2
-        },
-        {
-            question: "What is Chip's favourite food?",
-            answers: ["Ayam penyat", "Nasi lemak", "Anything with chilli"],
-            correct: 2
-        },
-        {
-            question: "What's Grace's favourite comfort food?",
-            answers: ["Anything spicy", "Itacho Sushi", "Sauerkraut fish soup", "Pietro Italiano (Italian!)"],
-            correct: 1
-        },
-        {
-            question: "What is Chip and Grace's pet name for each other?",
-            answers: ["Honey", "Dear", "Darling", "Love"],
-            correct: 3
-        },
-        {
-            question: "Are Chip and Grace beach or mountain persons?",
-            answers: ["Beach please", "Majestic mountain", "Neither, we're homebodies"],
-            correct: 1
-        },
-        {
-            question: "How many children do we want?",
-            answers: ["Stop at one", "Sky's the limit!", "2", "3"],
-            correct: 2
-        }
-    ];
-
-    socket.on('connect', () => {
-        console.log('Connected to server');
     });
 
-    socket.on('joined', (data) => {
-        console.log('Joined game:', data);
+    // Socket event listeners
+    socket.on('gameJoined', (data) => {
         playerId = data.playerId;
         isHost = data.isHost;
         
+        showScreen('waiting-room');
         if (isHost) {
-            document.querySelectorAll('#host-controls').forEach(el => {
-                el.classList.remove('invisible');
-                el.classList.add('visible');
-            });
-        }
-        
-        // Show waiting room
-        document.getElementById('waiting-room').style.display = 'block';
-    });
-
-    socket.on('updatePlayers', (updatedPlayers) => {
-        console.log('Players updated:', updatedPlayers);
-        players = updatedPlayers;
-        const playerList = document.getElementById('player-list');
-        if (playerList) {
-            playerList.innerHTML = updatedPlayers
-                .map(player => `
-                    <div class="player-name">
-                        ${player.name} ${player.isHost ? '(Host)' : ''}
-                    </div>
-                `)
-                .join('');
+            document.getElementById('host-controls').classList.remove('invisible');
         }
     });
 
-    function startGame() {
-        if (!isHost) {
-            console.log('Only host can start game');
-            return;
-        }
-        console.log('Host starting game...');
-        socket.emit('startGame');
-    }
-
-    socket.on('gameStarted', (questionIndex) => {
-        console.log('Game started with question:', questionIndex);
-        currentQuestion = questionIndex;
-        
-        // Stop lobby music if playing
-        if (lobbyMusic) {
-            lobbyMusic.pause();
-            lobbyMusic.currentTime = 0;
-        }
-        
-        // Make sure we're showing the question screen
-        document.getElementById('registration-screen').classList.remove('active');
-        document.getElementById('registration-screen').classList.add('hidden');
-        
-        // Show the question
-        showQuestion();
+    socket.on('updatePlayers', (players) => {
+        updatePlayerList(players);
     });
 
-    function showQuestion() {
-        if (leaderboardTimeout) {
-            clearTimeout(leaderboardTimeout);
-            leaderboardTimeout = null;
-        }
-        console.log('Showing question:', currentQuestion);
-
-        // Safety check for question index
-        if (currentQuestion >= questions.length) {
-            console.log('Game over, showing final results');
-            showFinalResults(players);
-            return;
-        }
-
-        // Clear any existing timers first
-        if (timer) {
-            clearInterval(timer);
-            timer = null;
-        }
-
-        // Hide all screens first
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-            screen.classList.add('hidden');
-        });
-
-        // Get and show question screen
-        const questionScreen = document.getElementById('question-screen');
-        if (!questionScreen) {
-            console.error('Question screen not found');
-            return;
-        }
-
-        questionScreen.classList.remove('hidden');
-        questionScreen.classList.add('active');
-
-        // Get current question
-        const question = questions[currentQuestion];
-        
-        // Update question text
-        const questionText = document.getElementById('question-text');
-        questionText.textContent = question.question;
-
-        // Reset and update answer buttons
-        question.answers.forEach((answer, index) => {
-            const button = document.getElementById(`answer-${index}`);
-            if (button) {
-                button.style.display = 'block';
-                button.textContent = answer;
-                button.classList.remove('selected', 'correct', 'incorrect');
-            }
-        });
-
-        // Reset timer state
-        timeLeft = 30;
-        updateTimerDisplay();
-
-        // Start a fresh timer
-        timer = setInterval(() => {
-            timeLeft--;
-            updateTimerDisplay();
-            
-            if (timeLeft <= 0) {
-                clearInterval(timer);
-                submitAnswer(-1); // Time's up
-            }
-        }, 1000);
-
-        // Play countdown music for host
-        if (isHost && countdownMusic) {
-            countdownMusic.currentTime = 0;
-            countdownMusic.play().catch(e => console.error('Countdown music failed:', e));
-        }
-
-        console.log('Question display completed:', currentQuestion);
-    }
-
-    // Add nextQuestion function
-    function nextQuestion() {
-        console.log('Next Question button clicked');
-        
-        if (!isHost) {
-            console.log('Only host can proceed to next question');
-            return;
-        }
-        
-        // Clear any existing timeouts
-        if (leaderboardTimeout) {
-            clearTimeout(leaderboardTimeout);
-            leaderboardTimeout = null;
-        }
-        
-        // Stop countdown music if it's still playing
-        if (countdownMusic) {
-            countdownMusic.pause();
-            countdownMusic.currentTime = 0;
-        }
-
-        // Increment current question
-        currentQuestion++;
-        
-        // Notify server about the question change with explicit question index
-        socket.emit('nextQuestion', { 
-            questionIndex: currentQuestion,
-            forceSync: true
-        });
-        
-        console.log('Emitted nextQuestion event for question:', currentQuestion);
-    }
-
-    // Update socket listener for new question
     socket.on('showQuestion', (data) => {
-        console.log('Received showQuestion event:', data);
-        
-        // Always use the server's question index if provided
-        if (typeof data === 'object' && data.questionIndex !== undefined) {
-            currentQuestion = data.questionIndex;
-        } else if (typeof data === 'number') {
-            currentQuestion = data;
-        }
-        
-        console.log('Updating to question:', currentQuestion);
-        
-        // Force clean up any existing timers/timeouts
-        if (timer) {
-            clearInterval(timer);
-            timer = null;
-        }
-        if (leaderboardTimeout) {
-            clearTimeout(leaderboardTimeout);
-            leaderboardTimeout = null;
-        }
-        
-        // Reset player states
-        players.forEach(player => {
-            if (player) player.currentAnswer = null;
-        });
-        
-        // Hide all screens and show question screen
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-            screen.classList.add('hidden');
-        });
-        
-        // Show and update question screen
-        const questionScreen = document.getElementById('question-screen');
-        if (questionScreen) {
-            questionScreen.classList.remove('hidden');
-            questionScreen.classList.add('active');
-            
-            // Show the question
-            showQuestion();
-        }
+        showScreen('question-screen');
+        startQuestionTimer(data.totalTime);
+        displayQuestion(data.questionData);
     });
 
-    window.addEventListener('beforeunload', () => {
-        if (lobbyMusic) {
-            lobbyMusic.pause();
-            lobbyMusic.currentTime = 0;
-        }
-        if (countdownMusic) {
-            countdownMusic.pause();
-            countdownMusic.currentTime = 0;
-        }
-    });
-
-    // Add socket listener for new question
-    socket.on('showQuestion', (data) => {
-        console.log('Received showQuestion event:', data);
-        
-        // If server provides a question index, use it
-        if (data && typeof data.questionIndex !== 'undefined') {
-            currentQuestion = data.questionIndex;
-        }
-        
-        // Reset state
-        if (timer) {
-            clearInterval(timer);
-            timer = null;
-        }
-        
-        // Hide all screens
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-            screen.classList.add('hidden');
-        });
-        
-        // Show and update the question screen
-        const questionScreen = document.getElementById('question-screen');
-        questionScreen.classList.remove('hidden');
-        questionScreen.classList.add('active');
-        
-        // Show the question
-        showQuestion();
-    });
-
-    function showScreen(screenId) {
-        console.log('Switching to screen:', screenId);
-        // Hide all screens
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-            screen.classList.add('hidden');
-        });
-        // Show target screen
-        const targetScreen = document.getElementById(screenId);
-        if (targetScreen) {
-            targetScreen.classList.remove('hidden');
-            targetScreen.classList.add('active');
-        } else {
-            console.error('Screen not found:', screenId);
-        }
-    }
-
-    // Update submitAnswer function
-    function submitAnswer(answerIndex) {
-        if (!playerId) {
-            console.log('No player ID found');
-            return;
-        }
-        
-        // Only stop timer if time is up
-        if (timeLeft <= 0) {
-            if (timer) {
-                clearInterval(timer);
-                timer = null;
-            }
-        }
-        
-        // Remove selected class and reset colors from all buttons
-        document.querySelectorAll('.answer-btn').forEach(btn => {
-            btn.classList.remove('selected');
-            // Reset to original colors
-            if (btn.id === 'answer-0') btn.classList.replace('bg-red-700', 'bg-red-500');
-            if (btn.id === 'answer-1') btn.classList.replace('bg-blue-700', 'bg-blue-500');
-            if (btn.id === 'answer-2') btn.classList.replace('bg-yellow-700', 'bg-yellow-500');
-            if (btn.id === 'answer-3') btn.classList.replace('bg-green-700', 'bg-green-500');
-        });
-        
-        // Only add selected styling if it's not a timeout
-        if (answerIndex >= 0) {
-            const selectedButton = document.getElementById(`answer-${answerIndex}`);
-            if (selectedButton) {
-                selectedButton.classList.add('selected');
-                // Add darker color based on button
-                if (selectedButton.id === 'answer-0') selectedButton.classList.replace('bg-red-500', 'bg-red-700');
-                if (selectedButton.id === 'answer-1') selectedButton.classList.replace('bg-blue-500', 'bg-blue-700');
-                if (selectedButton.id === 'answer-2') selectedButton.classList.replace('bg-yellow-500', 'bg-yellow-700');
-                if (selectedButton.id === 'answer-3') selectedButton.classList.replace('bg-green-500', 'bg-green-700');
-            }
-        }
-        
-        console.log('Submitting answer:', answerIndex, 'with time left:', timeLeft);
-        socket.emit('submitAnswer', {
-            answer: answerIndex,
-            timeLeft: timeLeft || 0,
-            correctAnswer: questions[currentQuestion].correct
-        });
-    }
-
-    // Add showAnswerReveal function
-    function showAnswerReveal(players, correctAnswer) {
-        // Clear any existing timeout first
-        if (leaderboardTimeout) {
-            clearTimeout(leaderboardTimeout);
-            leaderboardTimeout = null;
-        }
-
-        console.log('Showing answer reveal');
-        const question = questions[currentQuestion];
-        
-        // Show correct/incorrect answers
-        question.answers.forEach((answer, index) => {
-            const button = document.getElementById(`reveal-${index}`);
-            button.textContent = answer;
-            if (index === correctAnswer) {
-                button.className = 'answer-btn bg-green-500 text-white p-6 rounded-lg text-lg';
-            } else {
-                button.className = 'answer-btn bg-gray-300 text-gray-600 p-6 rounded-lg text-lg opacity-50';
-            }
-        });
-
-        // Show player results with enhanced styling
-        const playerResults = document.getElementById('player-results');
-        playerResults.innerHTML = players
-            .map(player => `
-                <div class="flex items-center justify-between p-4 mb-2 rounded-lg ${
-                    player.currentAnswer === correctAnswer 
-                    ? 'bg-green-100 border-2 border-green-500' 
-                    : 'bg-red-100 border-2 border-red-500'
-                }">
-                    <span class="font-semibold">${player.name}</span>
-                    <div class="flex items-center">
-                        ${
-                            player.currentAnswer === correctAnswer 
-                            ? '<i data-lucide="check-circle" class="w-6 h-6 text-green-500"></i>'
-                            : '<i data-lucide="x-circle" class="w-6 h-6 text-red-500"></i>'
-                        }
-                    </div>
-                </div>
-            `)
-            .join('');
-
-        // Initialize Lucide icons for the new elements
-        lucide.createIcons();
-
-        showScreen('answer-reveal');
-
-        // Set new timeout for leaderboard
-        leaderboardTimeout = setTimeout(() => {
-            showLeaderboard(players);
-            leaderboardTimeout = null; // Clear the reference
-        }, 8000);
-    }
-
-    // Add showLeaderboard function
-    // Make sure only host sees the Next Question button
-    function showLeaderboard(receivedPlayers) {
-        console.log('Showing leaderboard with players:', receivedPlayers);
-        
-        const leaderboardBody = document.getElementById('leaderboard-body');
-        if (!leaderboardBody) {
-            console.error('Leaderboard body element not found');
-            return;
-        }
-        
-        try {
-            const sortedPlayers = [...receivedPlayers].sort((a, b) => b.score - a.score);
-            
-            leaderboardBody.innerHTML = sortedPlayers
-                .map((player, index) => `
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-6 text-xl font-medium">${index + 1}</td>
-                        <td class="px-6 py-6 text-xl font-medium">${player.name}</td>
-                        <td class="px-6 py-6 text-xl font-medium">${player.score}</td>
-                    </tr>
-                `)
-                .join('');
-
-            // Set up next question button
-            const nextButton = document.getElementById('next-btn');
-            if (nextButton) {
-                if (isHost) {
-                    nextButton.style.display = 'block';
-                    // Remove any existing listeners
-                    nextButton.replaceWith(nextButton.cloneNode(true));
-                    // Add fresh click listener
-                    document.getElementById('next-btn').addEventListener('click', () => {
-                        console.log('Next button clicked');
-                        nextQuestion();
-                    });
-                    console.log('Next button set up for host');
-                } else {
-                    nextButton.style.display = 'none';
-                }
-            }
-
-            showScreen('leaderboard-screen');
-        } catch (error) {
-            console.error('Error showing leaderboard:', error);
-        }
-    }
-
-    function showFinalResults(players) {
-        console.log('Showing final results');
-        const finalLeaderboard = document.getElementById('final-leaderboard');
-        const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-        const top5Players = sortedPlayers.slice(0, 5);
-
-        finalLeaderboard.innerHTML = top5Players
-            .map((player, index) => `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${player.name}</td>
-                    <td>${player.score}</td>
-                </tr>
-            `)
-            .join('');
-
-        showScreen('final-screen');
-    // Reset game state
-    currentQuestion = 0;
-        if (timer) clearInterval(timer);
-    }
-    
-    // When the time is up
-    function startTimer() {
-        timeLeft = 30;
-        updateTimerDisplay();
-        
-        if (timer) clearInterval(timer);
-        
-        timer = setInterval(() => {
-            timeLeft--;
-            updateTimerDisplay();
-            
-            if (timeLeft <= 0) {
-                clearInterval(timer);
-                timer = null;
-                console.log('Time up, auto-submitting answer');
-                // Emit a time-up event to server with explicit question index
-                socket.emit('submitAnswer', {
-                    answer: -1,
-                    timeLeft: 0,
-                    correctAnswer: questions[currentQuestion].correct,
-                    questionIndex: currentQuestion
-                });
-            }
-        }, 1000);
-    }
-
-    // Add socket event listeners for results and leaderboard
     socket.on('showResults', (data) => {
-        console.log('Received results:', data);
-        
-        // Stop timer if still running
-        if (timer) {
-            clearInterval(timer);
-            timer = null;
-        }
-        
-        // Stop countdown music if it's playing
-        if (isHost && countdownMusic) {
-            countdownMusic.pause();
-            countdownMusic.currentTime = 0;
-        }
-        
-        // Force hide other screens
+        showScreen('answer-reveal');
+        displayResults(data);
+    });
+
+    socket.on('showLeaderboard', (data) => {
+        showScreen('leaderboard-screen');
+        displayLeaderboard(data.players, data.isLastQuestion);
+    });
+
+    socket.on('gameOver', (data) => {
+        showScreen('final-screen');
+        displayWinners(data.winners);
+    });
+
+    // UI Helper functions
+    function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.add('hidden');
-            screen.classList.remove('active');
         });
+        document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    function updatePlayerList(players) {
+        const playerList = document.getElementById('player-list');
+        playerList.innerHTML = players.map(player => `
+            <div class="player-card">
+                <span class="player-name">${player.name}</span>
+                ${player.isHost ? '<span class="host-badge">Host</span>' : ''}
+            </div>
+        `).join('');
+    }
+
+    function startQuestionTimer(duration) {
+        const timerElement = document.querySelector('.timer-text');
+        const progressElement = document.querySelector('.timer-progress');
+        let timeLeft = duration;
         
-        // Show answer reveal with small delay to ensure proper transition
-        setTimeout(() => {
-            showAnswerReveal(data.players, data.correctAnswer);
-        }, 100);
-    });
-
-    socket.on('showLeaderboard', (receivedPlayers) => {
-        console.log('Received leaderboard data:', receivedPlayers);
-        if (receivedPlayers) {
-            players = receivedPlayers; // Update the global players array
-        }
-        showLeaderboard(receivedPlayers);
-    });
-
-    socket.on('connect', () => {
-        console.log('Connected to server');
-        document.getElementById('connection-status').textContent = 'Connected';
-        document.getElementById('connection-status').style.color = 'green';
-    });
-
-    socket.on('disconnect', () => {
-        console.log('Disconnected from server');
-        document.getElementById('connection-status').textContent = 'Disconnected';
-        document.getElementById('connection-status').style.color = 'red';
-    });
-
-    // Function to handle music toggle
-    async function toggleMusic() {
-        try {
-            if (isMuted) {
-                // Unmuting
-                lobbyMusic.muted = false;
-                // Reset the audio to the beginning
-                lobbyMusic.currentTime = 0;
-                // Try to play
-                await lobbyMusic.play();
-                musicIcon.setAttribute('data-lucide', 'music');
-            } else {
-                // Muting
-                lobbyMusic.muted = true;
-                musicIcon.setAttribute('data-lucide', 'volume-x');
+        const timer = setInterval(() => {
+            timeLeft -= 1000;
+            const seconds = Math.ceil(timeLeft / 1000);
+            
+            timerElement.textContent = `${seconds} seconds`;
+            progressElement.style.width = `${(timeLeft / duration) * 100}%`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timer);
             }
-            isMuted = !isMuted;
-            lucide.createIcons();
-        } catch (error) {
-            console.error('Error toggling music:', error);
-            // If play fails, revert to muted state
-            isMuted = true;
-            lobbyMusic.muted = true;
-            musicIcon.setAttribute('data-lucide', 'volume-x');
-            lucide.createIcons();
-            alert('Unable to play music. Please try again.');
+        }, 1000);
+    }
+
+    function displayQuestion(questionData) {
+        document.getElementById('question-text').textContent = questionData.question;
+        const answersContainer = document.querySelector('#question-screen .grid');
+        
+        answersContainer.innerHTML = questionData.options.map((option, index) => `
+            <button class="answer-option" onclick="submitAnswer('${option}')">
+                ${option}
+            </button>
+        `).join('');
+    }
+
+    function displayResults(data) {
+        const resultsContainer = document.getElementById('player-results');
+        resultsContainer.innerHTML = data.players.map(player => `
+            <div class="result-card ${player.currentAnswer === data.correctAnswer ? 'correct' : 'incorrect'}">
+                <span class="player-name">${player.name}</span>
+                <span class="player-answer">${player.currentAnswer || 'No answer'}</span>
+                <span class="player-score">Score: ${player.score}</span>
+            </div>
+        `).join('');
+    }
+
+    function displayLeaderboard(players, isLastQuestion) {
+        const leaderboardTable = document.querySelector('#leaderboard-screen table');
+        leaderboardTable.innerHTML = players.map((player, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${player.name}</td>
+                <td>${player.score}</td>
+            </tr>
+        `).join('');
+        
+        if (isHost) {
+            document.getElementById('next-question-btn').style.display = 
+                isLastQuestion ? 'none' : 'block';
         }
     }
 
-    // Initialize the music state when page loads
-    window.addEventListener('load', () => {
-        // Set initial state
-        lobbyMusic.muted = true;
-        
-        // Add user interaction handler to start music
-        document.addEventListener('click', function initAudio() {
-            lobbyMusic.play().then(() => {
-                lobbyMusic.muted = true;
-                document.removeEventListener('click', initAudio);
-            }).catch(e => console.error('Initial play failed:', e));
-        }, { once: true });
-    });
+    function displayWinners(winners) {
+        const winnersTable = document.querySelector('#final-screen table');
+        winnersTable.innerHTML = winners.map((player, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${player.name}</td>
+                <td>${player.score}</td>
+            </tr>
+        `).join('');
+    }
 
-    // Stop music when game starts
-    socket.on('gameStarted', (questionIndex) => {
-        console.log('Game started with question:', questionIndex);
-        currentQuestion = questionIndex;
-        if (lobbyMusic) {
-            lobbyMusic.pause();
-            lobbyMusic.currentTime = 0;
-        }
-        showQuestion();
-    });
+    // Event handlers
+    function submitAnswer(answer) {
+        const timeLeft = parseInt(document.querySelector('.timer-text').textContent);
+        socket.emit('submitAnswer', {
+            answer: answer,
+            timeLeft: timeLeft * 1000
+        });
+    }
 
-    // Clean up when leaving
-    window.addEventListener('beforeunload', () => {
-        if (lobbyMusic) {
-            lobbyMusic.pause();
-            lobbyMusic.currentTime = 0;
+    document.getElementById('start-game-btn')?.addEventListener('click', () => {
+        if (isHost) {
+            socket.emit('startGame');
         }
     });
+
+    document.getElementById('show-leaderboard-btn')?.addEventListener('click', () => {
+        if (isHost) {
+            socket.emit('showLeaderboard');
+        }
+    });
+
+    document.getElementById('next-question-btn')?.addEventListener('click', () => {
+        if (isHost) {
+            socket.emit('nextQuestion');
+        }
+    });    
     </script>
 </body>
 </html>

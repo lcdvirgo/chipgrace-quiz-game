@@ -1,10 +1,10 @@
+// server.js
 const express = require('express');
 const app = express();
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 
-// Initialize Socket.IO with CORS
 const io = new Server(server, {
     cors: {
         origin: ["https://chipgrace-quiz-game.netlify.app", "http://localhost:3000"],
@@ -13,10 +13,9 @@ const io = new Server(server, {
     }
 });
 
-// Basic route for health check
-app.get('/', (req, res) => {
-    res.send('Quiz server running');
-});
+// Game configuration
+const QUESTION_TIME = 30000; // 30 seconds
+const REVEAL_TIME = 5000; // 5 seconds for showing results
 
 // Game state
 let gameState = {
@@ -24,7 +23,9 @@ let gameState = {
     currentQuestion: 0,
     players: {},
     isStarted: false,
-    answeredCount: 0
+    answeredCount: 0,
+    questions: [], // Array to store quiz questions
+    timer: null
 };
 
 // Socket connection handling
@@ -44,7 +45,7 @@ io.on('connection', (socket) => {
             joinedAt: Date.now()
         };
         
-        socket.emit('joined', {
+        socket.emit('gameJoined', {
             playerId: socket.id,
             isHost: isHost
         });
@@ -61,71 +62,58 @@ io.on('connection', (socket) => {
             gameState.phase = 'question';
             gameState.answeredCount = 0;
 
+            // Reset all players' scores
             Object.values(gameState.players).forEach(p => {
                 p.score = 0;
                 p.currentAnswer = null;
             });
 
-            io.emit('gameStarted', 0);
-            console.log('Game started by host');
+            startQuestion();
         }
     });
 
     // Handle answer submission
     socket.on('submitAnswer', (data) => {
-        if (!gameState.isStarted) return;
+        if (!gameState.isStarted || gameState.phase !== 'question') return;
 
         const player = gameState.players[socket.id];
         if (player && player.currentAnswer === null) {
             player.currentAnswer = data.answer;
             
             if (data.answer === data.correctAnswer) {
-                const timeBonus = Math.floor((data.timeLeft / 20) * 1000);
+                const timeBonus = Math.floor((data.timeLeft / QUESTION_TIME) * 1000);
                 player.score += 1000 + timeBonus;
             }
 
             gameState.answeredCount++;
             
             const totalPlayers = Object.keys(gameState.players).length;
-            if (gameState.answeredCount === totalPlayers || data.timeLeft <= 0) {
-                io.emit('showResults', {
-                    players: Object.values(gameState.players),
-                    correctAnswer: data.correctAnswer
-                });
-                
-                setTimeout(() => {
-                    io.emit('showLeaderboard', Object.values(gameState.players));
-                }, 5000);
+            if (gameState.answeredCount === totalPlayers) {
+                showResults();
             }
         }
     });
 
-    // Handle next question
+    // Handle next question request
     socket.on('nextQuestion', () => {
         const player = gameState.players[socket.id];
         if (player?.isHost) {
             gameState.currentQuestion++;
             
-            // Check if game is over
-            if (gameState.currentQuestion >= questions.length) {
-                gameState.phase = 'finished';
-                io.emit('gameOver', Object.values(gameState.players));
+            if (gameState.currentQuestion >= gameState.questions.length) {
+                endGame();
             } else {
-                gameState.phase = 'question';
-                gameState.answeredCount = 0;
-                
-                Object.values(gameState.players).forEach(p => {
-                    p.currentAnswer = null;
-                });
-                
-                io.emit('showQuestion', gameState.currentQuestion);
+                startQuestion();
             }
         }
     });
 
-    socket.on('gameOver', (players) => {
-        console.log('Game over, showing final results');
-        showFinalResults(players);
+    // Handle show leaderboard request
+    socket.on('showLeaderboard', () => {
+        const player = gameState.players[socket.id];
+        if (player?.isHost) {
+            showLeaderboard();
+        }
     });
 
     // Handle disconnection
@@ -138,13 +126,68 @@ io.on('connection', (socket) => {
             io.emit('updatePlayers', Object.values(gameState.players));
             
             if (player.isHost) {
-                gameState.isStarted = false;
-                io.emit('hostLeft');
-                console.log('Host left, game ended');
+                endGame();
             }
         }
     });
 });
+
+// Helper functions
+function startQuestion() {
+    gameState.phase = 'question';
+    gameState.answeredCount = 0;
+    
+    Object.values(gameState.players).forEach(p => {
+        p.currentAnswer = null;
+    });
+    
+    io.emit('showQuestion', {
+        questionNumber: gameState.currentQuestion + 1,
+        questionData: gameState.questions[gameState.currentQuestion],
+        totalTime: QUESTION_TIME
+    });
+
+    // Set timer to automatically show results after question time
+    if (gameState.timer) clearTimeout(gameState.timer);
+    gameState.timer = setTimeout(() => {
+        if (gameState.phase === 'question') {
+            showResults();
+        }
+    }, QUESTION_TIME);
+}
+
+function showResults() {
+    gameState.phase = 'results';
+    if (gameState.timer) clearTimeout(gameState.timer);
+
+    const currentQuestion = gameState.questions[gameState.currentQuestion];
+    io.emit('showResults', {
+        players: Object.values(gameState.players),
+        correctAnswer: currentQuestion.correctAnswer
+    });
+}
+
+function showLeaderboard() {
+    gameState.phase = 'leaderboard';
+    const sortedPlayers = Object.values(gameState.players)
+        .sort((a, b) => b.score - a.score);
+    
+    io.emit('showLeaderboard', {
+        players: sortedPlayers,
+        isLastQuestion: gameState.currentQuestion === gameState.questions.length - 1
+    });
+}
+
+function endGame() {
+    gameState.phase = 'finished';
+    gameState.isStarted = false;
+    
+    const winners = Object.values(gameState.players)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+    
+    io.emit('gameOver', { winners });
+}
 
 // Start server
 const PORT = process.env.PORT || 3000;
