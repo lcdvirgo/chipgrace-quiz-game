@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chip & Grace's Quiz Game</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -194,14 +194,11 @@
 
     <script>
         const socket = io('https://chipgrace-quiz-game.onrender.com', {
-            withCredentials: true,
-            transportOptions: {
-                polling: {
-                    extraHeaders: {
-                        'Access-Control-Allow-Origin': 'https://chipgrace-quiz-game.netlify.app'
-                    }
-                }
-            }
+            transports: ['websocket', 'polling'],
+            autoConnect: true,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000
         });
 
         let playerId = null;
@@ -226,8 +223,18 @@
         });
 
         socket.on('connect_error', (error) => {
-            console.error('Connection error:', error);
-            document.getElementById('connection-status').textContent = 'Connection Error';
+            console.error('Connection Error:', error);
+            document.getElementById('connection-status').textContent = 'Connection Error: ' + error.message;
+        });
+
+        socket.on('connect_timeout', () => {
+            console.error('Connection Timeout');
+            document.getElementById('connection-status').textContent = 'Connection Timeout';
+        });
+
+        socket.on('error', (error) => {
+            console.error('Socket Error:', error);
+            document.getElementById('connection-status').textContent = 'Socket Error';
         });
 
         socket.on('gameJoined', (data) => {
