@@ -309,27 +309,57 @@
                 }
             }, 1000);
         }
-    
+
         function displayQuestion(questionData) {
+            if (!questionData || !questionData.question || !questionData.options) {
+                console.error('Invalid question data received:', questionData);
+                return;
+            }
+
             document.getElementById('question-text').textContent = questionData.question;
-            const answersContainer = document.querySelector('#question-screen .grid');
             
-            answersContainer.innerHTML = questionData.options.map((option, index) => `
-                <button class="answer-option" onclick="submitAnswer('${option}')">
-                    ${option}
-                </button>
-            `).join('');
+            // Update the answer buttons
+            questionData.options.forEach((option, index) => {
+                const button = document.getElementById(`answer-${index}`);
+                if (button) {
+                    button.textContent = option;
+                    button.disabled = false;
+                }
+            });
         }
-    
+
         function displayResults(data) {
+            if (!data || !data.players || !data.correctAnswer) {
+                console.error('Invalid results data:', data);
+                return;
+            }
+
             const resultsContainer = document.getElementById('player-results');
-            resultsContainer.innerHTML = data.players.map(player => `
-                <div class="result-card ${player.currentAnswer === data.correctAnswer ? 'correct' : 'incorrect'}">
-                    <span class="player-name">${player.name}</span>
-                    <span class="player-answer">${player.currentAnswer || 'No answer'}</span>
-                    <span class="player-score">Score: ${player.score}</span>
-                </div>
-            `).join('');
+            resultsContainer.innerHTML = '';
+
+            // Show the correct answer first
+            const correctAnswerDiv = document.createElement('div');
+            correctAnswerDiv.className = 'text-xl font-bold text-center mb-6 text-green-600';
+            correctAnswerDiv.textContent = `Correct Answer: ${data.correctAnswer}`;
+            resultsContainer.appendChild(correctAnswerDiv);
+
+            // Show player results
+            data.players.forEach(player => {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = `player-result p-4 rounded-lg mb-2 ${
+                    player.currentAnswer === data.correctAnswer ? 'bg-green-100' : 'bg-red-100'
+                }`;
+                
+                resultDiv.innerHTML = `
+                    <div class="font-semibold">${player.name}</div>
+                    <div class="text-sm">
+                        Answer: ${player.currentAnswer || 'No answer'}
+                        <span class="float-right">Score: ${player.score}</span>
+                    </div>
+                `;
+                
+                resultsContainer.appendChild(resultDiv);
+            });
         }
     
         function displayLeaderboard(players, isLastQuestion) {
@@ -360,10 +390,15 @@
         }
     
         // Event handlers
-        function submitAnswer(answer) {
+        function submitAnswer(index) {
+            const answerButtons = document.querySelectorAll('.answer-btn');
+            answerButtons.forEach(btn => btn.disabled = true);
+
             const timeLeft = parseInt(document.querySelector('.timer-text').textContent);
+            const selectedAnswer = document.getElementById(`answer-${index}`).textContent;
+            
             socket.emit('submitAnswer', {
-                answer: answer,
+                answer: selectedAnswer,
                 timeLeft: timeLeft * 1000
             });
         }
