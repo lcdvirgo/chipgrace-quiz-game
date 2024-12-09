@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Quiz Game</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chip & Grace's Quiz Game</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js" integrity="sha384-Gr6Lu2Ajx28mzwyVR8CFkULdCU7kMlZ9UthllibdOSo6qAiN+yXNHqtgdTvFXMT4" crossorigin="anonymous"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <style>
@@ -16,8 +18,8 @@
         transform: translateY(-2px);
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-</style>    
-<body class="bg-gray-50 min-h-screen">
+</style>  
+<body class="bg-gray-100 min-h-screen">
     <!-- Add audio element -->
     <audio id="lobby-music" loop preload="auto">
         <source src="audio/lobby-music.mp3" type="audio/mpeg">
@@ -38,25 +40,45 @@
     <!-- Registration Screen -->
     <div id="registration-screen" class="screen active p-4 md:p-8">
         <div class="max-w-2xl mx-auto">
-            <h1 class="text-3xl md:text-4xl font-bold text-center mb-8 text-gray-800">Welcome to Chip & Grace's Quiz!</h1>
+            <h1 class="text-3xl md:text-4xl font-bold text-center mb-8 text-gray-800">
+                Welcome to Chip & Grace's Quiz!
+            </h1>
             
-            <div class="space-y-6">
-                <input type="text" id="player-name" placeholder="Enter your name" required
-                    class="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-colors">
-                <button id="joingame-btn" class="w-full py-4 px-6 text-xl text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors">
+            <form id="join-game-form" class="space-y-6">
+                <div class="space-y-4">
+                    <label for="player-name" class="block text-lg font-medium text-gray-700">
+                        Enter your name
+                    </label>
+                    <input 
+                        type="text" 
+                        id="player-name" 
+                        required 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Your name"
+                    >
+                </div>
+                <button 
+                    type="submit"
+                    class="w-full py-3 px-6 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-200"
+                >
                     Join Game
                 </button>
-            </div>
+            </form>
 
-            <!-- Players waiting room -->
+            <!-- Waiting Room -->
             <div id="waiting-room" class="hidden mt-8">
                 <h2 class="text-2xl font-semibold text-center mb-4">Players in Room</h2>
-                <div id="player-list" class="flex flex-wrap justify-center gap-3"></div>
-                <p class="text-gray-600 italic text-center mt-6">Waiting for host to start the game...</p>
-                
+                <div id="player-list" class="flex flex-wrap justify-center gap-3">
+                    <!-- Players will be added here dynamically -->
+                </div>
+                <p class="text-center mt-4 text-gray-600">
+                    Waiting for host to start the game...
+                </p>
                 <div id="host-controls" class="invisible mt-8 border-t border-gray-200 pt-6">
-                    <button onclick="startGame()"
-                        class="w-full py-3 text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors">
+                    <button 
+                        id="start-game-btn"
+                        class="w-full py-3 px-6 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition duration-200"
+                    >
                         Start Game
                     </button>
                 </div>
@@ -65,7 +87,7 @@
     </div>
 
     <!-- Question Screen -->
-    <div id="question-screen" class="screen hidden p-4 md:p-8">
+    <div id="question-screen" class="screen hidden">
         <div class="max-w-3xl mx-auto">
             <h2 id="question-text" class="text-xl md:text-2xl font-semibold text-center mb-6"></h2>
             
@@ -88,7 +110,7 @@
     </div>
 
     <!-- Answer Reveal Screen -->
-    <div id="answer-reveal" class="screen hidden p-4 md:p-8">
+    <div id="answer-reveal" class="screen hidden">
         <div class="max-w-3xl mx-auto">
             <h2 class="text-2xl font-bold text-center mb-6">Answer Results</h2>
             
@@ -109,7 +131,7 @@
     </div>
 
     <!-- Leaderboard Screen -->
-    <div id="leaderboard-screen" class="screen hidden p-4 md:p-8">
+    <div id="leaderboard-screen" class="screen hidden">
         <div class="max-w-2xl mx-auto">
             <h2 class="text-2xl font-bold text-center mb-6">Leaderboard</h2>
             
@@ -134,7 +156,7 @@
     </div>
 
     <!-- Final Results Screen -->
-    <div id="final-screen" class="screen hidden p-4 md:p-8">
+    <div id="final-screen" class="screen hidden">
         <div class="max-w-2xl mx-auto text-center">
             <h1 class="text-3xl font-bold mb-4">Game Over!</h1>
             <h2 class="text-2xl font-semibold mb-6">Top 5 Winners</h2>
@@ -159,173 +181,176 @@
         </div>
     </div>
 
-    <div id="connection-status" class="fixed bottom-4 right-4 px-3 py-2 rounded-lg bg-white shadow-md"></div>
+    <!-- Connection Status -->
+    <div id="connection-status" class="fixed bottom-4 right-4 px-3 py-2 rounded-lg bg-white shadow-md">
+        <!-- Connection status will be updated dynamically -->
+    </div>
 
     <script>
-    // client.js
-    const socket = io('https://chipgrace-quiz-game.onrender.com');
-    let playerId = null;
-    let isHost = false;
-
-    // Join game handler
-    document.getElementById('join-game-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('player-name').value;
-        const isHostInput = name.toLowerCase() === 'chipgrace';
-        
-        socket.emit('joinGame', {
-            name: name,
-            isHost: isHostInput
-        });
-    });
-
-    // Socket event listeners
-    socket.on('gameJoined', (data) => {
-        playerId = data.playerId;
-        isHost = data.isHost;
-        
-        showScreen('waiting-room');
-        if (isHost) {
-            document.getElementById('host-controls').classList.remove('invisible');
-        }
-    });
-
-    socket.on('updatePlayers', (players) => {
-        updatePlayerList(players);
-    });
-
-    socket.on('showQuestion', (data) => {
-        showScreen('question-screen');
-        startQuestionTimer(data.totalTime);
-        displayQuestion(data.questionData);
-    });
-
-    socket.on('showResults', (data) => {
-        showScreen('answer-reveal');
-        displayResults(data);
-    });
-
-    socket.on('showLeaderboard', (data) => {
-        showScreen('leaderboard-screen');
-        displayLeaderboard(data.players, data.isLastQuestion);
-    });
-
-    socket.on('gameOver', (data) => {
-        showScreen('final-screen');
-        displayWinners(data.winners);
-    });
-
-    // UI Helper functions
-    function showScreen(screenId) {
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.add('hidden');
-        });
-        document.getElementById(screenId).classList.remove('hidden');
-    }
-
-    function updatePlayerList(players) {
-        const playerList = document.getElementById('player-list');
-        playerList.innerHTML = players.map(player => `
-            <div class="player-card">
-                <span class="player-name">${player.name}</span>
-                ${player.isHost ? '<span class="host-badge">Host</span>' : ''}
-            </div>
-        `).join('');
-    }
-
-    function startQuestionTimer(duration) {
-        const timerElement = document.querySelector('.timer-text');
-        const progressElement = document.querySelector('.timer-progress');
-        let timeLeft = duration;
-        
-        const timer = setInterval(() => {
-            timeLeft -= 1000;
-            const seconds = Math.ceil(timeLeft / 1000);
+        // client.js
+        const socket = io('https://chipgrace-quiz-game.onrender.com');
+        let playerId = null;
+        let isHost = false;
+    
+        // Join game handler
+        document.getElementById('join-game-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('player-name').value;
+            const isHostInput = name.toLowerCase() === 'chipgrace';
             
-            timerElement.textContent = `${seconds} seconds`;
-            progressElement.style.width = `${(timeLeft / duration) * 100}%`;
+            socket.emit('joinGame', {
+                name: name,
+                isHost: isHostInput
+            });
+        });
+    
+        // Socket event listeners
+        socket.on('gameJoined', (data) => {
+            playerId = data.playerId;
+            isHost = data.isHost;
             
-            if (timeLeft <= 0) {
-                clearInterval(timer);
+            showScreen('waiting-room');
+            if (isHost) {
+                document.getElementById('host-controls').classList.remove('invisible');
             }
-        }, 1000);
-    }
-
-    function displayQuestion(questionData) {
-        document.getElementById('question-text').textContent = questionData.question;
-        const answersContainer = document.querySelector('#question-screen .grid');
-        
-        answersContainer.innerHTML = questionData.options.map((option, index) => `
-            <button class="answer-option" onclick="submitAnswer('${option}')">
-                ${option}
-            </button>
-        `).join('');
-    }
-
-    function displayResults(data) {
-        const resultsContainer = document.getElementById('player-results');
-        resultsContainer.innerHTML = data.players.map(player => `
-            <div class="result-card ${player.currentAnswer === data.correctAnswer ? 'correct' : 'incorrect'}">
-                <span class="player-name">${player.name}</span>
-                <span class="player-answer">${player.currentAnswer || 'No answer'}</span>
-                <span class="player-score">Score: ${player.score}</span>
-            </div>
-        `).join('');
-    }
-
-    function displayLeaderboard(players, isLastQuestion) {
-        const leaderboardTable = document.querySelector('#leaderboard-screen table');
-        leaderboardTable.innerHTML = players.map((player, index) => `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${player.name}</td>
-                <td>${player.score}</td>
-            </tr>
-        `).join('');
-        
-        if (isHost) {
-            document.getElementById('next-question-btn').style.display = 
-                isLastQuestion ? 'none' : 'block';
-        }
-    }
-
-    function displayWinners(winners) {
-        const winnersTable = document.querySelector('#final-screen table');
-        winnersTable.innerHTML = winners.map((player, index) => `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${player.name}</td>
-                <td>${player.score}</td>
-            </tr>
-        `).join('');
-    }
-
-    // Event handlers
-    function submitAnswer(answer) {
-        const timeLeft = parseInt(document.querySelector('.timer-text').textContent);
-        socket.emit('submitAnswer', {
-            answer: answer,
-            timeLeft: timeLeft * 1000
         });
-    }
-
-    document.getElementById('start-game-btn')?.addEventListener('click', () => {
-        if (isHost) {
-            socket.emit('startGame');
+    
+        socket.on('updatePlayers', (players) => {
+            updatePlayerList(players);
+        });
+    
+        socket.on('showQuestion', (data) => {
+            showScreen('question-screen');
+            startQuestionTimer(data.totalTime);
+            displayQuestion(data.questionData);
+        });
+    
+        socket.on('showResults', (data) => {
+            showScreen('answer-reveal');
+            displayResults(data);
+        });
+    
+        socket.on('showLeaderboard', (data) => {
+            showScreen('leaderboard-screen');
+            displayLeaderboard(data.players, data.isLastQuestion);
+        });
+    
+        socket.on('gameOver', (data) => {
+            showScreen('final-screen');
+            displayWinners(data.winners);
+        });
+    
+        // UI Helper functions
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
         }
-    });
-
-    document.getElementById('show-leaderboard-btn')?.addEventListener('click', () => {
-        if (isHost) {
-            socket.emit('showLeaderboard');
+    
+        function updatePlayerList(players) {
+            const playerList = document.getElementById('player-list');
+            playerList.innerHTML = players.map(player => `
+                <div class="player-card">
+                    <span class="player-name">${player.name}</span>
+                    ${player.isHost ? '<span class="host-badge">Host</span>' : ''}
+                </div>
+            `).join('');
         }
-    });
-
-    document.getElementById('next-question-btn')?.addEventListener('click', () => {
-        if (isHost) {
-            socket.emit('nextQuestion');
+    
+        function startQuestionTimer(duration) {
+            const timerElement = document.querySelector('.timer-text');
+            const progressElement = document.querySelector('.timer-progress');
+            let timeLeft = duration;
+            
+            const timer = setInterval(() => {
+                timeLeft -= 1000;
+                const seconds = Math.ceil(timeLeft / 1000);
+                
+                timerElement.textContent = `${seconds} seconds`;
+                progressElement.style.width = `${(timeLeft / duration) * 100}%`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                }
+            }, 1000);
         }
-    });    
+    
+        function displayQuestion(questionData) {
+            document.getElementById('question-text').textContent = questionData.question;
+            const answersContainer = document.querySelector('#question-screen .grid');
+            
+            answersContainer.innerHTML = questionData.options.map((option, index) => `
+                <button class="answer-option" onclick="submitAnswer('${option}')">
+                    ${option}
+                </button>
+            `).join('');
+        }
+    
+        function displayResults(data) {
+            const resultsContainer = document.getElementById('player-results');
+            resultsContainer.innerHTML = data.players.map(player => `
+                <div class="result-card ${player.currentAnswer === data.correctAnswer ? 'correct' : 'incorrect'}">
+                    <span class="player-name">${player.name}</span>
+                    <span class="player-answer">${player.currentAnswer || 'No answer'}</span>
+                    <span class="player-score">Score: ${player.score}</span>
+                </div>
+            `).join('');
+        }
+    
+        function displayLeaderboard(players, isLastQuestion) {
+            const leaderboardTable = document.querySelector('#leaderboard-screen table');
+            leaderboardTable.innerHTML = players.map((player, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${player.name}</td>
+                    <td>${player.score}</td>
+                </tr>
+            `).join('');
+            
+            if (isHost) {
+                document.getElementById('next-question-btn').style.display = 
+                    isLastQuestion ? 'none' : 'block';
+            }
+        }
+    
+        function displayWinners(winners) {
+            const winnersTable = document.querySelector('#final-screen table');
+            winnersTable.innerHTML = winners.map((player, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${player.name}</td>
+                    <td>${player.score}</td>
+                </tr>
+            `).join('');
+        }
+    
+        // Event handlers
+        function submitAnswer(answer) {
+            const timeLeft = parseInt(document.querySelector('.timer-text').textContent);
+            socket.emit('submitAnswer', {
+                answer: answer,
+                timeLeft: timeLeft * 1000
+            });
+        }
+    
+        document.getElementById('start-game-btn')?.addEventListener('click', () => {
+            if (isHost) {
+                socket.emit('startGame');
+            }
+        });
+    
+        document.getElementById('show-leaderboard-btn')?.addEventListener('click', () => {
+            if (isHost) {
+                socket.emit('showLeaderboard');
+            }
+        });
+    
+        document.getElementById('next-question-btn')?.addEventListener('click', () => {
+            if (isHost) {
+                socket.emit('nextQuestion');
+            }
+        });    
     </script>
 </body>
 </html>

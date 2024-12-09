@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chip & Grace's Quiz Game</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js" integrity="sha384-Gr6Lu2Ajx28mzwyVR8CFkULdCU7kMlZ9UthllibdOSo6qAiN+yXNHqtgdTvFXMT4" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <style>
@@ -17,6 +16,13 @@
     .player-result:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .screen {
+        display: none;
+    }
+
+    .screen.active {
+        display: block;
     }
 </style>  
 <body class="bg-gray-100 min-h-screen">
@@ -187,11 +193,20 @@
     </div>
 
     <script>
-        // client.js
-        const socket = io('https://chipgrace-quiz-game.onrender.com');
+        const socket = io('https://chipgrace-quiz-game.onrender.com', {
+            withCredentials: true,
+            transportOptions: {
+                polling: {
+                    extraHeaders: {
+                        'Access-Control-Allow-Origin': 'https://chipgrace-quiz-game.netlify.app'
+                    }
+                }
+            }
+        });
+
         let playerId = null;
         let isHost = false;
-    
+
         // Join game handler
         document.getElementById('join-game-form').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -203,13 +218,25 @@
                 isHost: isHostInput
             });
         });
-    
+
         // Socket event listeners
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            document.getElementById('connection-status').textContent = 'Connected';
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+            document.getElementById('connection-status').textContent = 'Connection Error';
+        });
+
         socket.on('gameJoined', (data) => {
             playerId = data.playerId;
             isHost = data.isHost;
             
-            showScreen('waiting-room');
+            document.getElementById('registration-screen').classList.add('hidden');
+            document.getElementById('waiting-room').classList.remove('hidden');
+            
             if (isHost) {
                 document.getElementById('host-controls').classList.remove('invisible');
             }
