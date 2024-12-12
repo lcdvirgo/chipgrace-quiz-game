@@ -403,23 +403,27 @@
             }
 
             function updateTimer() {
+                // First update the display
                 timerElement.textContent = `${Math.ceil(timeLeft / 1000)} seconds`;
                 progressElement.style.width = `${(timeLeft / duration) * 100}%`;
                 
-                if (timeLeft <= 0) {
+                // Then reduce the time
+                timeLeft -= 1000;
+                
+                // Check if time is up after reduction
+                if (timeLeft < 0) {
                     clearInterval(currentQuestionTimer);
                     if (!hasAnsweredQuestion) {
                         submitAnswer(-1); // Only auto-submit if haven't answered
                     }
-                    return;
                 }
-                
-                timeLeft -= 1000;
             }
 
-            // Initial update
-            updateTimer();
-            // Start the interval
+            // Initial state
+            timerElement.textContent = `${Math.ceil(timeLeft / 1000)} seconds`;
+            progressElement.style.width = '100%';
+
+            // Start the timer
             currentQuestionTimer = setInterval(updateTimer, 1000);
         }
 
