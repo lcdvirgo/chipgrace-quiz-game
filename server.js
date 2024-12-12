@@ -58,7 +58,7 @@ const quizQuestions = [
     {
         question: "Who is the messier one?",
         answers: ["Grace", "Chip", "Both as messy"],
-        correct: 0
+        correct: 1
     },
     {
         question: "What is Grace's and Chip's favourite colour, respectively?",
