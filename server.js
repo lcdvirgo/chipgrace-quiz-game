@@ -172,15 +172,10 @@ io.on('connection', (socket) => {
                 totalPlayers: Object.keys(gameState.players).length
             });
             
-            // If all players have answered, show results immediately
+            // Only store that all players have answered, but don't show results yet
             if (gameState.answeredCount === Object.keys(gameState.players).length) {
-                // Clear the question timer
-                if (gameState.timer) {
-                    clearTimeout(gameState.timer);
-                    gameState.timer = null;
-                }
-                // Show results immediately
-                showResults();
+                gameState.allAnswered = true;
+                // Let the timer continue running
             }
         }
     });
@@ -221,6 +216,7 @@ function startQuestion() {
     
     gameState.phase = 'question';
     gameState.answeredCount = 0;
+    gameState.allAnswered = false;
     
     Object.values(gameState.players).forEach(p => {
         p.currentAnswer = null;
