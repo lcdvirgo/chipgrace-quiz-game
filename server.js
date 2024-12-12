@@ -172,10 +172,15 @@ io.on('connection', (socket) => {
                 totalPlayers: Object.keys(gameState.players).length
             });
             
-            // Only store that all players have answered, but don't show results yet
+            // If all players have answered, show results immediately
             if (gameState.answeredCount === Object.keys(gameState.players).length) {
-                gameState.allAnswered = true;
-                // Let the timer continue running
+                // Clear the server-side timer
+                if (gameState.timer) {
+                    clearTimeout(gameState.timer);
+                    gameState.timer = null;
+                }
+                // Show results immediately
+                showResults();
             }
         }
     });
@@ -244,7 +249,7 @@ function startQuestion() {
         if (gameState.phase === 'question') {
             showResults();
         }
-    }, QUESTION_TIME);
+    }, QUESTION_TIME + 100); // Add small buffer to ensure client-side timer completes
 }
 
 function showResults() {

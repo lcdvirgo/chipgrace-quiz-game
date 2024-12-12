@@ -410,12 +410,12 @@
             }
 
             function updateTimer() {
-                // Update display regardless of answer status
-                const secondsLeft = Math.ceil(timeLeft / 1000);
+                // First update the display
+                const secondsLeft = Math.max(Math.floor(timeLeft / 1000), 0); // Use floor instead of ceil and ensure non-negative
                 timerElement.textContent = `${secondsLeft} seconds`;
-                progressElement.style.width = `${(timeLeft / duration) * 100}%`;
+                progressElement.style.width = `${Math.max((timeLeft / duration) * 100, 0)}%`;
                 
-                // Reduce time
+                // Then reduce the time
                 timeLeft -= 1000;
                 
                 // Check if time is up
@@ -427,7 +427,6 @@
                     if (!hasAnsweredQuestion) {
                         submitAnswer(-1); // Submit no answer if haven't answered
                     }
-                    // Don't automatically switch to results - server will handle this
                 }
             }
 
