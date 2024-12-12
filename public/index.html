@@ -448,20 +448,18 @@
         }
 
         // Helper functions
-        function startQuestionTimer(duration) {
+        function startQuestionTimer(duration, serverTime) {
             const timerElement = document.querySelector('.timer-text');
             const progressElement = document.querySelector('.timer-progress');
-            let timeLeft = duration;
             hasAnsweredQuestion = false;
-
-            // Synchronize with server time
-            const serverTimeOffset = data.serverTime ? Date.now() - data.serverTime : 0;
-            const startTime = Date.now() - serverTimeOffset;
-            const endTime = startTime + duration;
 
             if (currentQuestionTimer) {
                 clearInterval(currentQuestionTimer);
             }
+
+            // Start timing from when we received the question
+            const startTime = Date.now();
+            const endTime = startTime + duration;
 
             // Only play countdown music if user is host
             if (isHost && countdownMusic) {
@@ -472,7 +470,7 @@
             }
 
             function updateTimer() {
-                const now = Date.now() - serverTimeOffset;
+                const now = Date.now();
                 const remaining = Math.max(0, endTime - now);
                 const secondsLeft = Math.ceil(remaining / 1000);
                 const percentage = (remaining / duration) * 100;
@@ -491,12 +489,11 @@
                         countdownMusic.currentTime = 0;
                     }
                     
-                    // Force submit no answer if haven't answered
+                    // Force submit no answer if haven't answered yet
                     if (!hasAnsweredQuestion) {
+                        console.log('Time up - submitting empty answer');
                         submitAnswer(-1);
                     }
-
-                    // The server will handle showing results
                     return;
                 }
             }
@@ -504,9 +501,10 @@
             // Start with initial update
             updateTimer();
             
-            // Update frequently for smooth countdown
+            // Update every 50ms for smooth countdown
             currentQuestionTimer = setInterval(updateTimer, 50);
         }
+
 
 
         function submitAnswer(index) {
@@ -515,33 +513,35 @@
             hasAnsweredQuestion = true;
             const answerButtons = document.querySelectorAll('.answer-btn');
             
-            // Disable and fade out all buttons except selected
+            // Disable all buttons
             answerButtons.forEach(btn => {
                 btn.disabled = true;
                 btn.classList.add('opacity-50');
             });
 
-            // Get actual time remaining based on original duration
+            // Get time remaining (0 if timer expired)
             const timerText = document.querySelector('.timer-text').textContent;
             const seconds = parseInt(timerText.split(' ')[0]) || 0;
             const timeLeft = seconds * 1000;
             
-            const selectedButton = document.getElementById(`answer-${index}`);
-            const answer = selectedButton ? selectedButton.textContent.trim() : null;
-            
-            // Highlight selected answer
-            if (selectedButton) {
-                selectedButton.classList.remove('opacity-50');
-                selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
+            // Handle timeout case (index = -1)
+            let answer = null;
+            if (index >= 0) {
+                const selectedButton = document.getElementById(`answer-${index}`);
+                answer = selectedButton ? selectedButton.textContent.trim() : null;
+                
+                // Highlight selected answer
+                if (selectedButton) {
+                    selectedButton.classList.remove('opacity-50');
+                    selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
+                }
             }
             
-            // Submit answer with accurate time remaining
+            // Submit answer to server
             socket.emit('submitAnswer', {
                 answer: answer,
                 timeLeft: timeLeft
             });
-            
-            // Timer continues running until server sends results
         }
 
         function cleanupQuestion() {
