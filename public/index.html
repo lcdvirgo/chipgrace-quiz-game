@@ -205,7 +205,7 @@
         let playerId = null;
         let isHost = false;
         let currentQuestionTimer = null;
-        
+        let hasAnsweredQuestion = false;
 
         // Join game handler
         document.getElementById('join-game-form').addEventListener('submit', (e) => {
@@ -258,6 +258,9 @@
         socket.on('showQuestion', (data) => {
             console.log('Received question data:', data);
             const { questionData } = data;
+            
+            // Reset answer state for new question
+            hasAnsweredQuestion = false;
             
             console.log('Processing question:', questionData.question);
             console.log('Options:', questionData.options);
@@ -393,6 +396,7 @@
             const timerElement = document.querySelector('.timer-text');
             const progressElement = document.querySelector('.timer-progress');
             let timeLeft = duration;
+            hasAnsweredQuestion = false; // Reset answer state for new question
 
             if (currentQuestionTimer) {
                 clearInterval(currentQuestionTimer);
@@ -402,12 +406,15 @@
                 timerElement.textContent = `${Math.ceil(timeLeft / 1000)} seconds`;
                 progressElement.style.width = `${(timeLeft / duration) * 100}%`;
                 
-                timeLeft -= 1000;
-                
-                if (timeLeft < 0) {
+                if (timeLeft <= 0) {
                     clearInterval(currentQuestionTimer);
-                    submitAnswer(-1); // Auto-submit on timeout
+                    if (!hasAnsweredQuestion) {
+                        submitAnswer(-1); // Only auto-submit if haven't answered
+                    }
+                    return;
                 }
+                
+                timeLeft -= 1000;
             }
 
             // Initial update
@@ -417,39 +424,37 @@
         }
 
         function submitAnswer(index) {
-            const answerButtons = document.querySelectorAll('.answer-btn');
-            let hasAnswered = false;
+            // Only process answer if player hasn't answered this question yet
+            if (hasAnsweredQuestion) return;
             
-            // Only process answer if not already answered
-            if (!hasAnswered) {
-                hasAnswered = true;
-                
-                // Disable and fade out all buttons
-                answerButtons.forEach(btn => {
-                    btn.disabled = true;
-                    btn.classList.add('opacity-50');
-                });
+            hasAnsweredQuestion = true;
+            const answerButtons = document.querySelectorAll('.answer-btn');
+            
+            // Disable and fade out all buttons
+            answerButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-50');
+            });
 
-                // Get current time left
-                const timerText = document.querySelector('.timer-text').textContent;
-                const seconds = parseInt(timerText.split(' ')[0]) || 0;
-                const timeLeft = seconds * 1000;
-                
-                const selectedButton = document.getElementById(`answer-${index}`);
-                const answer = selectedButton ? selectedButton.textContent : null;
-                
-                // Highlight selected answer
-                if (selectedButton) {
-                    selectedButton.classList.remove('opacity-50');
-                    selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
-                }
-                
-                // Submit answer without affecting timer
-                socket.emit('submitAnswer', {
-                    answer: answer,
-                    timeLeft: timeLeft
-                });
+            // Get current time left
+            const timerText = document.querySelector('.timer-text').textContent;
+            const seconds = parseInt(timerText.split(' ')[0]) || 0;
+            const timeLeft = seconds * 1000;
+            
+            const selectedButton = document.getElementById(`answer-${index}`);
+            const answer = selectedButton ? selectedButton.textContent : null;
+            
+            // Highlight selected answer
+            if (selectedButton) {
+                selectedButton.classList.remove('opacity-50');
+                selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
             }
+            
+            // Submit answer without stopping the timer
+            socket.emit('submitAnswer', {
+                answer: answer,
+                timeLeft: timeLeft
+            });
         }
 
         function switchToScreen(screenId) {
