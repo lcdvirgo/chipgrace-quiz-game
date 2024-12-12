@@ -486,6 +486,7 @@
                 
                 // Check if time is up
                 if (now >= endTime) {
+                    console.log('Timer expired in client');
                     clearInterval(currentQuestionTimer);
                     currentQuestionTimer = null;
                     
@@ -499,7 +500,7 @@
                         console.log('Time up - submitting empty answer');
                         submitAnswer(-1);
                         
-                        // Important: Make sure all UI elements are disabled
+                        // Disable all buttons
                         const answerButtons = document.querySelectorAll('.answer-btn');
                         answerButtons.forEach(btn => {
                             btn.disabled = true;
@@ -520,6 +521,7 @@
         function submitAnswer(index) {
             if (hasAnsweredQuestion) return;
             
+            console.log('Submitting answer:', index);
             hasAnsweredQuestion = true;
             const answerButtons = document.querySelectorAll('.answer-btn');
             
@@ -547,7 +549,8 @@
                 }
             }
             
-            // Submit answer to server and ensure we wait for results
+            console.log('Emitting submitAnswer:', { answer, timeLeft });
+            // Submit answer to server
             socket.emit('submitAnswer', {
                 answer: answer,
                 timeLeft: timeLeft

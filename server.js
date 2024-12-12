@@ -220,7 +220,7 @@ function startQuestion() {
     gameState.phase = 'question';
     gameState.answeredCount = 0;
     gameState.allAnswered = false;
-    gameState.timerStart = Date.now(); // Record when the timer starts
+    gameState.timerStart = Date.now();
     
     Object.values(gameState.players).forEach(p => {
         p.currentAnswer = null;
@@ -235,8 +235,7 @@ function startQuestion() {
             options: currentQuestion.answers,
             correctAnswer: currentQuestion.answers[currentQuestion.correct]
         },
-        totalTime: QUESTION_TIME,
-        serverTime: Date.now() // Send server time for synchronization
+        totalTime: QUESTION_TIME
     };
     
     io.emit('showQuestion', questionData);
@@ -246,7 +245,17 @@ function startQuestion() {
     // Set timer for showing results
     gameState.timer = setTimeout(() => {
         if (gameState.phase === 'question') {
-            console.log('Timer expired, showing results');
+            console.log('Timer expired, handling unanswered players');
+            
+            // Force submit null answers for players who haven't answered
+            Object.entries(gameState.players).forEach(([socketId, player]) => {
+                if (player.currentAnswer === null) {
+                    player.currentAnswer = null;
+                    gameState.answeredCount++;
+                }
+            });
+            
+            console.log('Showing results after timeout');
             showResults();
         }
     }, QUESTION_TIME);
