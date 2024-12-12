@@ -147,18 +147,19 @@ io.on('connection', (socket) => {
 
     socket.on('submitAnswer', (data) => {
         if (!gameState.isStarted || gameState.phase !== 'question') return;
-
+    
         const player = gameState.players[socket.id];
         const currentQuestion = gameState.questions[gameState.currentQuestion];
+        const correctAnswer = currentQuestion.answers[currentQuestion.correct];
         
         if (player && player.currentAnswer === null) {
             player.currentAnswer = data.answer;
             
-            if (data.answer === currentQuestion.correctAnswer) {
+            if (data.answer === correctAnswer) {
                 const timeBonus = Math.floor((data.timeLeft / QUESTION_TIME) * 1000);
                 player.score += 1000 + timeBonus;
             }
-
+    
             gameState.answeredCount++;
             
             const totalPlayers = Object.keys(gameState.players).length;
@@ -206,13 +207,15 @@ function startQuestion() {
     });
 
     const currentQuestion = gameState.questions[gameState.currentQuestion];
-    console.log('Sending question:', currentQuestion); // Debug log
+    console.log('Current question:', currentQuestion); // Debug log
     
+    // Map the question data to match client expectations
     io.emit('showQuestion', {
         questionNumber: gameState.currentQuestion + 1,
         questionData: {
             question: currentQuestion.question,
-            options: currentQuestion.options
+            options: currentQuestion.answers, // Map 'answers' to 'options'
+            correctAnswer: currentQuestion.answers[currentQuestion.correct] // Get correct answer text
         },
         totalTime: QUESTION_TIME
     });
@@ -232,9 +235,9 @@ function showResults() {
     const currentQuestion = gameState.questions[gameState.currentQuestion];
     io.emit('showResults', {
         players: Object.values(gameState.players),
-        correctAnswer: currentQuestion.correctAnswer,
+        correctAnswer: currentQuestion.answers[currentQuestion.correct],
         question: currentQuestion.question,
-        options: currentQuestion.options
+        options: currentQuestion.answers
     });
 }
 
