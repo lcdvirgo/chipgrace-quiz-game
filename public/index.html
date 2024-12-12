@@ -307,8 +307,10 @@
         });
 
         socket.on('showResults', (data) => {
+            // Only clear timer when actually showing results
             if (currentQuestionTimer) {
                 clearInterval(currentQuestionTimer);
+                currentQuestionTimer = null;
             }
 
             document.querySelectorAll('.screen').forEach(screen => {
@@ -396,51 +398,58 @@
                 clearInterval(currentQuestionTimer);
             }
 
-            timerElement.textContent = `${Math.ceil(timeLeft / 1000)} seconds`;
-            progressElement.style.width = '100%';
-
-            currentQuestionTimer = setInterval(() => {
-                timeLeft -= 1000;
-                const seconds = Math.ceil(timeLeft / 1000);
-                
-                timerElement.textContent = `${seconds} seconds`;
+            function updateTimer() {
+                timerElement.textContent = `${Math.ceil(timeLeft / 1000)} seconds`;
                 progressElement.style.width = `${(timeLeft / duration) * 100}%`;
                 
-                if (timeLeft <= 0) {
+                timeLeft -= 1000;
+                
+                if (timeLeft < 0) {
                     clearInterval(currentQuestionTimer);
                     submitAnswer(-1); // Auto-submit on timeout
                 }
-            }, 1000);
+            }
+
+            // Initial update
+            updateTimer();
+            // Start the interval
+            currentQuestionTimer = setInterval(updateTimer, 1000);
         }
 
         function submitAnswer(index) {
             const answerButtons = document.querySelectorAll('.answer-btn');
+            let hasAnswered = false;
             
-            // Disable and fade out all buttons
-            answerButtons.forEach(btn => {
-                btn.disabled = true;
-                btn.classList.add('opacity-50');
-            });
+            // Only process answer if not already answered
+            if (!hasAnswered) {
+                hasAnswered = true;
+                
+                // Disable and fade out all buttons
+                answerButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50');
+                });
 
-            // Get current time left
-            const timerText = document.querySelector('.timer-text').textContent;
-            const seconds = parseInt(timerText.split(' ')[0]) || 0;
-            const timeLeft = seconds * 1000;
-            
-            const selectedButton = document.getElementById(`answer-${index}`);
-            const answer = selectedButton ? selectedButton.textContent : null;
-            
-            // Highlight selected answer
-            if (selectedButton) {
-                selectedButton.classList.remove('opacity-50');
-                selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
+                // Get current time left
+                const timerText = document.querySelector('.timer-text').textContent;
+                const seconds = parseInt(timerText.split(' ')[0]) || 0;
+                const timeLeft = seconds * 1000;
+                
+                const selectedButton = document.getElementById(`answer-${index}`);
+                const answer = selectedButton ? selectedButton.textContent : null;
+                
+                // Highlight selected answer
+                if (selectedButton) {
+                    selectedButton.classList.remove('opacity-50');
+                    selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
+                }
+                
+                // Submit answer without affecting timer
+                socket.emit('submitAnswer', {
+                    answer: answer,
+                    timeLeft: timeLeft
+                });
             }
-            
-            // Submit answer but don't stop the timer
-            socket.emit('submitAnswer', {
-                answer: answer,
-                timeLeft: timeLeft
-            });
         }
 
         function switchToScreen(screenId) {
