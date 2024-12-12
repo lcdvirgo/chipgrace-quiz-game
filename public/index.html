@@ -313,6 +313,7 @@
         });
 
         socket.on('showResults', (data) => {
+            // Clean up any existing timer
             if (currentQuestionTimer) {
                 clearInterval(currentQuestionTimer);
                 currentQuestionTimer = null;
@@ -324,10 +325,14 @@
                 countdownMusic.currentTime = 0;
             }
 
+            // Hide all screens
             document.querySelectorAll('.screen').forEach(screen => {
                 screen.classList.add('hidden');
             });
-            document.getElementById('answer-reveal').classList.remove('hidden');
+
+            // Show answer reveal screen
+            const answerReveal = document.getElementById('answer-reveal');
+            answerReveal.classList.remove('hidden');
 
             // Show results with updated styling
             const resultsContainer = document.getElementById('player-results');
@@ -448,7 +453,7 @@
         }
 
         // Helper functions
-        function startQuestionTimer(duration, serverTime) {
+        function startQuestionTimer(duration) {
             const timerElement = document.querySelector('.timer-text');
             const progressElement = document.querySelector('.timer-progress');
             hasAnsweredQuestion = false;
@@ -493,6 +498,13 @@
                     if (!hasAnsweredQuestion) {
                         console.log('Time up - submitting empty answer');
                         submitAnswer(-1);
+                        
+                        // Important: Make sure all UI elements are disabled
+                        const answerButtons = document.querySelectorAll('.answer-btn');
+                        answerButtons.forEach(btn => {
+                            btn.disabled = true;
+                            btn.classList.add('opacity-50');
+                        });
                     }
                     return;
                 }
@@ -501,11 +513,9 @@
             // Start with initial update
             updateTimer();
             
-            // Update every 50ms for smooth countdown
+            // Update frequently for smooth countdown
             currentQuestionTimer = setInterval(updateTimer, 50);
         }
-
-
 
         function submitAnswer(index) {
             if (hasAnsweredQuestion) return;
@@ -537,7 +547,7 @@
                 }
             }
             
-            // Submit answer to server
+            // Submit answer to server and ensure we wait for results
             socket.emit('submitAnswer', {
                 answer: answer,
                 timeLeft: timeLeft
