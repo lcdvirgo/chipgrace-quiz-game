@@ -259,40 +259,40 @@
         });
 
         socket.on('showQuestion', (data) => {
-            console.log('Received new question:', data);
-            
-            // Reset answer state
-            hasAnsweredQuestion = false;
-            
-            // Hide all screens and show question screen
-            document.querySelectorAll('.screen').forEach(screen => {
-                screen.classList.add('hidden');
-                screen.classList.remove('active');
-            });
-            
-            const questionScreen = document.getElementById('question-screen');
-            questionScreen.classList.remove('hidden');
-            questionScreen.classList.add('active');
-
-            // Update question text and number
-            const questionText = document.getElementById('question-text');
-            questionText.textContent = `${data.questionData.question}`;
-
-            // Reset and update answer buttons
-            const answerContainer = questionScreen.querySelector('.grid');
-            answerContainer.innerHTML = data.questionData.options.map((option, index) => `
-                <button 
-                    id="answer-${index}" 
-                    onclick="submitAnswer(${index})"
-                    class="answer-btn bg-${index === 0 ? 'red' : index === 1 ? 'blue' : index === 2 ? 'yellow' : 'green'}-500 
-                        text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform">
-                    ${option}
-                </button>
-            `).join('');
-
-            // Start new timer
-            startQuestionTimer(data.totalTime);
+        console.log('Received new question:', data);
+        
+        // Reset answer state
+        hasAnsweredQuestion = false;
+        
+        // Hide all screens and show question screen
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.add('hidden');
+            screen.classList.remove('active');
         });
+        
+        const questionScreen = document.getElementById('question-screen');
+        questionScreen.classList.remove('hidden');
+        questionScreen.classList.add('active');
+
+        // Update question text and number
+        const questionText = document.getElementById('question-text');
+        questionText.textContent = `${data.questionData.question}`;
+
+        // Reset and update answer buttons
+        const answerContainer = questionScreen.querySelector('.grid');
+        answerContainer.innerHTML = data.questionData.options.map((option, index) => `
+            <button 
+                id="answer-${index}" 
+                onclick="submitAnswer(${index})"
+                class="answer-btn bg-${index === 0 ? 'red' : index === 1 ? 'blue' : index === 2 ? 'yellow' : 'green'}-500 
+                    text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform">
+                ${option}
+            </button>
+        `).join('');
+
+        // Start new timer
+        startQuestionTimer(data.totalTime);
+    });
 
         socket.on('playerAnswered', (data) => {
             const { playerCount, totalPlayers } = data;
@@ -370,15 +370,17 @@
                             <div class="font-semibold text-gray-800">${player.name}</div>
                             <div class="flex items-center">
                                 ${
-                                    isCorrect ? '<span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-sm">✓ Correct</span>' : 
-                                    player.currentAnswer === null ? '<span class="bg-gray-500 text-white px-3 py-1 rounded-full text-sm">No Answer</span>' : 
+                                    isCorrect ? 
+                                    '<span class="bg-green-500 text-white px-3 py-1 rounded-full text-sm">✓ Correct</span>' : 
+                                    player.currentAnswer === null ? 
+                                    '<span class="bg-gray-500 text-white px-3 py-1 rounded-full text-sm">No Answer</span>' : 
                                     '<span class="bg-red-500 text-white px-3 py-1 rounded-full text-sm">✗ Wrong</span>'
                                 }
                             </div>
                         </div>
                         <div class="mt-2 text-sm text-gray-600">
                             Answer: ${player.currentAnswer || 'No answer'}
-                            <span class="float-right font-medium">Score: ${player.score}</span>
+                            <span class="float-right font-medium">Score: ${player.score.toLocaleString()}</span>
                         </div>
                     </div>
                 `;
