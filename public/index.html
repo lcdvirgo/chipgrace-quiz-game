@@ -203,6 +203,7 @@
 
         let playerId = null;
         let isHost = false;
+        let currentQuestionTimer = null;
 
         // Join game handler
         document.getElementById('join-game-form').addEventListener('submit', (e) => {
@@ -227,16 +228,6 @@
             document.getElementById('connection-status').textContent = 'Connection Error: ' + error.message;
         });
 
-        socket.on('connect_timeout', () => {
-            console.error('Connection Timeout');
-            document.getElementById('connection-status').textContent = 'Connection Timeout';
-        });
-
-        socket.on('error', (error) => {
-            console.error('Socket Error:', error);
-            document.getElementById('connection-status').textContent = 'Socket Error';
-        });
-
         socket.on('gameJoined', (data) => {
             playerId = data.playerId;
             isHost = data.isHost;
@@ -248,74 +239,29 @@
                 document.getElementById('host-controls').classList.remove('invisible');
             }
         });
-    
+
         socket.on('updatePlayers', (players) => {
-            updatePlayerList(players);
-        });
-    
-        socket.on('showQuestion', (data) => {
-            console.log('Received question data:', data); // Debug log
-            showScreen('question-screen');
-            startQuestionTimer(data.totalTime);
-            displayQuestion(data.questionData);
-        });
-    
-        socket.on('showResults', (data) => {
-            showScreen('answer-reveal');
-            displayResults(data);
-        });
-    
-        socket.on('showLeaderboard', (data) => {
-            showScreen('leaderboard-screen');
-            displayLeaderboard(data.players, data.isLastQuestion);
-        });
-    
-        socket.on('gameOver', (data) => {
-            showScreen('final-screen');
-            displayWinners(data.winners);
-        });
-    
-        // UI Helper functions
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(screen => {
-                screen.classList.add('hidden');
-            });
-            document.getElementById(screenId).classList.remove('hidden');
-        }
-    
-        function updatePlayerList(players) {
             const playerList = document.getElementById('player-list');
             playerList.innerHTML = players.map(player => `
-                <div class="player-card">
+                <div class="player-card bg-white rounded-lg p-3 shadow">
                     <span class="player-name">${player.name}</span>
-                    ${player.isHost ? '<span class="host-badge">Host</span>' : ''}
+                    ${player.isHost ? '<span class="host-badge ml-2 px-2 py-1 bg-green-100 text-green-800 rounded">Host</span>' : ''}
                 </div>
             `).join('');
-        }
-
-        document.getElementById('start-game-btn').addEventListener('click', () => {
-            if (isHost) {
-                console.log('Host starting game...');
-                socket.emit('startGame');
-            }
         });
 
         socket.on('showQuestion', (data) => {
             console.log('Received question data:', data);
-            showScreen('question-screen');
-            startQuestionTimer(data.totalTime);
-            if (data.questionData) {
-                displayQuestion(data.questionData);
-            }
-        });
-
-        function displayQuestion(questionData) {
-            console.log('Displaying question:', questionData);
+            const { questionData } = data;
             
-            if (!questionData || !questionData.question || !questionData.options) {
-                console.error('Invalid question data structure:', questionData);
-                return;
-            }
+            // Clear previous screen
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            
+            // Show question screen
+            const questionScreen = document.getElementById('question-screen');
+            questionScreen.classList.remove('hidden');
 
             // Update question text
             document.getElementById('question-text').textContent = questionData.question;
@@ -324,18 +270,117 @@
             const answerButtons = document.querySelectorAll('.answer-btn');
             questionData.options.forEach((option, index) => {
                 if (answerButtons[index]) {
-                    answerButtons[index].textContent = option;
-                    answerButtons[index].disabled = false;
+                    const button = answerButtons[index];
+                    button.textContent = option;
+                    button.disabled = false;
+                    // Clear previous event listeners
+                    button.replaceWith(button.cloneNode(true));
                 }
             });
-        }
-    
+
+            // Reattach event listeners
+            document.querySelectorAll('.answer-btn').forEach((button, index) => {
+                button.addEventListener('click', () => submitAnswer(index));
+            });
+
+            // Start timer
+            startQuestionTimer(data.totalTime);
+        });
+
+        socket.on('showResults', (data) => {
+            if (currentQuestionTimer) {
+                clearInterval(currentQuestionTimer);
+            }
+
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            document.getElementById('answer-reveal').classList.remove('hidden');
+
+            const resultsContainer = document.getElementById('player-results');
+            resultsContainer.innerHTML = '';
+
+            // Show correct answer
+            resultsContainer.innerHTML = `
+                <div class="text-xl font-bold text-center mb-6 text-green-600">
+                    Correct Answer: ${data.correctAnswer}
+                </div>
+            `;
+
+            // Show player results
+            data.players.forEach(player => {
+                const isCorrect = player.currentAnswer === data.correctAnswer;
+                resultsContainer.innerHTML += `
+                    <div class="player-result p-4 rounded-lg mb-2 ${isCorrect ? 'bg-green-100' : 'bg-red-100'}">
+                        <div class="font-semibold">${player.name}</div>
+                        <div class="text-sm">
+                            Answer: ${player.currentAnswer || 'No answer'}
+                            <span class="float-right">Score: ${player.score}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        });
+
+        socket.on('showLeaderboard', (data) => {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            document.getElementById('leaderboard-screen').classList.remove('hidden');
+
+            const leaderboardBody = document.getElementById('leaderboard-body');
+            leaderboardBody.innerHTML = data.players
+                .sort((a, b) => b.score - a.score)
+                .map((player, index) => `
+                    <tr class="bg-white">
+                        <td class="px-6 py-4">${index + 1}</td>
+                        <td class="px-6 py-4">${player.name}</td>
+                        <td class="px-6 py-4">${player.score}</td>
+                    </tr>
+                `).join('');
+
+            const nextButton = document.getElementById('next-btn');
+            if (nextButton) {
+                nextButton.style.display = data.isLastQuestion ? 'none' : 'block';
+                if (isHost) {
+                    nextButton.addEventListener('click', () => socket.emit('nextQuestion'), { once: true });
+                } else {
+                    nextButton.style.display = 'none';
+                }
+            }
+        });
+
+        socket.on('gameOver', (data) => {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            document.getElementById('final-screen').classList.remove('hidden');
+
+            const finalLeaderboard = document.getElementById('final-leaderboard');
+            finalLeaderboard.innerHTML = data.winners
+                .map((player, index) => `
+                    <tr class="bg-white">
+                        <td class="px-6 py-4">${index + 1}</td>
+                        <td class="px-6 py-4">${player.name}</td>
+                        <td class="px-6 py-4">${player.score}</td>
+                    </tr>
+                `).join('');
+        });
+
+        // Helper functions
         function startQuestionTimer(duration) {
             const timerElement = document.querySelector('.timer-text');
             const progressElement = document.querySelector('.timer-progress');
             let timeLeft = duration;
-            
-            const timer = setInterval(() => {
+
+            if (currentQuestionTimer) {
+                clearInterval(currentQuestionTimer);
+            }
+
+            timerElement.textContent = `${Math.ceil(timeLeft / 1000)} seconds`;
+            progressElement.style.width = '100%';
+
+            currentQuestionTimer = setInterval(() => {
                 timeLeft -= 1000;
                 const seconds = Math.ceil(timeLeft / 1000);
                 
@@ -343,143 +388,50 @@
                 progressElement.style.width = `${(timeLeft / duration) * 100}%`;
                 
                 if (timeLeft <= 0) {
-                    clearInterval(timer);
+                    clearInterval(currentQuestionTimer);
+                    submitAnswer(-1); // Auto-submit on timeout
                 }
             }, 1000);
         }
 
-        function displayQuestion(questionData) {
-            console.log('Displaying question:', questionData); // Debug log
-            
-            if (!questionData) {
-                console.error('No question data received');
-                return;
-            }
-
-            if (!questionData.question || !questionData.options) {
-                console.error('Invalid question data structure:', questionData);
-                return;
-            }
-
-            // Update question text
-            const questionElement = document.getElementById('question-text');
-            if (questionElement) {
-                questionElement.textContent = questionData.question;
-            }
-
-            // Update answer buttons
-            questionData.options.forEach((option, index) => {
-                const button = document.getElementById(`answer-${index}`);
-                if (button) {
-                    button.textContent = option;
-                    button.disabled = false;
-                    
-                    // Remove previous event listeners
-                    const newButton = button.cloneNode(true);
-                    button.parentNode.replaceChild(newButton, button);
-                    
-                    // Add new event listener
-                    newButton.addEventListener('click', () => submitAnswer(index));
-                }
-            });
-        }
-
-        function displayResults(data) {
-            if (!data || !data.players || !data.correctAnswer) {
-                console.error('Invalid results data:', data);
-                return;
-            }
-
-            const resultsContainer = document.getElementById('player-results');
-            resultsContainer.innerHTML = '';
-
-            // Show the correct answer first
-            const correctAnswerDiv = document.createElement('div');
-            correctAnswerDiv.className = 'text-xl font-bold text-center mb-6 text-green-600';
-            correctAnswerDiv.textContent = `Correct Answer: ${data.correctAnswer}`;
-            resultsContainer.appendChild(correctAnswerDiv);
-
-            // Show player results
-            data.players.forEach(player => {
-                const resultDiv = document.createElement('div');
-                resultDiv.className = `player-result p-4 rounded-lg mb-2 ${
-                    player.currentAnswer === data.correctAnswer ? 'bg-green-100' : 'bg-red-100'
-                }`;
-                
-                resultDiv.innerHTML = `
-                    <div class="font-semibold">${player.name}</div>
-                    <div class="text-sm">
-                        Answer: ${player.currentAnswer || 'No answer'}
-                        <span class="float-right">Score: ${player.score}</span>
-                    </div>
-                `;
-                
-                resultsContainer.appendChild(resultDiv);
-            });
-        }
-    
-        function displayLeaderboard(players, isLastQuestion) {
-            const leaderboardTable = document.querySelector('#leaderboard-screen table');
-            leaderboardTable.innerHTML = players.map((player, index) => `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${player.name}</td>
-                    <td>${player.score}</td>
-                </tr>
-            `).join('');
-            
-            if (isHost) {
-                document.getElementById('next-question-btn').style.display = 
-                    isLastQuestion ? 'none' : 'block';
-            }
-        }
-    
-        function displayWinners(winners) {
-            const winnersTable = document.querySelector('#final-screen table');
-            winnersTable.innerHTML = winners.map((player, index) => `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${player.name}</td>
-                    <td>${player.score}</td>
-                </tr>
-            `).join('');
-        }
-
         function submitAnswer(index) {
+            if (currentQuestionTimer) {
+                clearInterval(currentQuestionTimer);
+            }
+
             const answerButtons = document.querySelectorAll('.answer-btn');
             answerButtons.forEach(btn => btn.disabled = true);
 
-            const timerText = document.querySelector('.timer-text')?.textContent || '0';
-            const timeLeft = parseInt(timerText) || 0;
+            const timerText = document.querySelector('.timer-text').textContent;
+            const timeLeft = parseInt(timerText) * 1000;
             
-            const selectedButton = document.getElementById(`answer-${index}`);
-            const selectedAnswer = selectedButton ? selectedButton.textContent : '';
-            
-            console.log('Submitting answer:', selectedAnswer); // Debug log
+            const answer = index >= 0 ? answerButtons[index].textContent : null;
             
             socket.emit('submitAnswer', {
-                answer: selectedAnswer,
-                timeLeft: timeLeft * 1000
+                answer: answer,
+                timeLeft: timeLeft
             });
         }
-    
-        document.getElementById('start-game-btn')?.addEventListener('click', () => {
+
+        // Start game button handler
+        document.getElementById('start-game-btn').addEventListener('click', () => {
             if (isHost) {
+                console.log('Host starting game...');
                 socket.emit('startGame');
             }
         });
-    
-        document.getElementById('show-leaderboard-btn')?.addEventListener('click', () => {
-            if (isHost) {
-                socket.emit('showLeaderboard');
-            }
-        });
-    
-        document.getElementById('next-question-btn')?.addEventListener('click', () => {
-            if (isHost) {
-                socket.emit('nextQuestion');
-            }
-        });    
+
+        // Initialize any required UI elements
+        function init() {
+            // Hide all screens except registration
+            document.querySelectorAll('.screen:not(#registration-screen)').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            document.getElementById('registration-screen').classList.remove('hidden');
+        }
+
+        // Call initialization
+        init();
     </script>
 </body>
 </html>
