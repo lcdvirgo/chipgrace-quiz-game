@@ -93,7 +93,7 @@
     </div>
 
     <!-- Question Screen -->
-    <div id="question-screen" class="screen hidden">
+    <div id="question-screen" class="screen hidden p-4">
         <div class="max-w-3xl mx-auto">
             <h2 id="question-text" class="text-xl md:text-2xl font-semibold text-center mb-6"></h2>
             
@@ -101,16 +101,12 @@
             <div class="h-4 bg-gray-200 rounded-full overflow-hidden mb-8">
                 <div class="timer-progress h-full bg-gradient-to-r from-blue-500 to-red-500 transition-all duration-1000"></div>
             </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button id="answer-0" onclick="submitAnswer(0)" 
-                    class="answer-btn bg-red-500 text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform"></button>
-                <button id="answer-1" onclick="submitAnswer(1)"
-                    class="answer-btn bg-blue-500 text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform"></button>
-                <button id="answer-2" onclick="submitAnswer(2)"
-                    class="answer-btn bg-yellow-500 text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform"></button>
-                <button id="answer-3" onclick="submitAnswer(3)"
-                    class="answer-btn bg-green-500 text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform"></button>
+    
+            <div class="grid grid-cols-1 gap-4">
+                <button id="answer-0" class="answer-btn bg-red-500 text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform"></button>
+                <button id="answer-1" class="answer-btn bg-blue-500 text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform"></button>
+                <button id="answer-2" class="answer-btn bg-yellow-500 text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform"></button>
+                <button id="answer-3" class="answer-btn bg-green-500 text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform"></button>
             </div>
         </div>
     </div>
@@ -254,6 +250,9 @@
             console.log('Received question data:', data);
             const { questionData } = data;
             
+            console.log('Processing question:', questionData.question);
+            console.log('Options:', questionData.options);
+
             // Clear previous screen
             document.querySelectorAll('.screen').forEach(screen => {
                 screen.classList.add('hidden');
@@ -264,23 +263,26 @@
             questionScreen.classList.remove('hidden');
 
             // Update question text
-            document.getElementById('question-text').textContent = questionData.question;
+            const questionElement = document.getElementById('question-text');
+            questionElement.textContent = questionData.question;
 
-            // Update answer buttons
+            // Hide unused answer buttons
             const answerButtons = document.querySelectorAll('.answer-btn');
+            answerButtons.forEach(button => button.style.display = 'none');
+
+            // Show and update only the buttons we need
             questionData.options.forEach((option, index) => {
-                if (answerButtons[index]) {
-                    const button = answerButtons[index];
+                const button = document.getElementById(`answer-${index}`);
+                if (button) {
+                    button.style.display = 'block';
                     button.textContent = option;
                     button.disabled = false;
-                    // Clear previous event listeners
-                    button.replaceWith(button.cloneNode(true));
+                    
+                    // Remove old event listeners and add new one
+                    const newButton = button.cloneNode(true);
+                    button.parentNode.replaceChild(newButton, button);
+                    newButton.addEventListener('click', () => submitAnswer(index));
                 }
-            });
-
-            // Reattach event listeners
-            document.querySelectorAll('.answer-btn').forEach((button, index) => {
-                button.addEventListener('click', () => submitAnswer(index));
             });
 
             // Start timer
@@ -403,9 +405,16 @@
             answerButtons.forEach(btn => btn.disabled = true);
 
             const timerText = document.querySelector('.timer-text').textContent;
-            const timeLeft = parseInt(timerText) * 1000;
+            const seconds = parseInt(timerText.split(' ')[0]) || 0;
+            const timeLeft = seconds * 1000;
             
-            const answer = index >= 0 ? answerButtons[index].textContent : null;
+            const selectedButton = document.getElementById(`answer-${index}`);
+            const answer = selectedButton ? selectedButton.textContent : null;
+            
+            console.log('Submitting answer:', {
+                answer: answer,
+                timeLeft: timeLeft
+            });
             
             socket.emit('submitAnswer', {
                 answer: answer,

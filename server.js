@@ -207,15 +207,21 @@ function startQuestion() {
     });
 
     const currentQuestion = gameState.questions[gameState.currentQuestion];
-    console.log('Current question:', currentQuestion); // Debug log
-    
-    // Map the question data to match client expectations
+    console.log('Sending question:', {
+        questionNumber: gameState.currentQuestion + 1,
+        questionData: {
+            question: currentQuestion.question,
+            options: currentQuestion.answers,
+            correctAnswer: currentQuestion.answers[currentQuestion.correct]
+        }
+    });
+
     io.emit('showQuestion', {
         questionNumber: gameState.currentQuestion + 1,
         questionData: {
             question: currentQuestion.question,
-            options: currentQuestion.answers, // Map 'answers' to 'options'
-            correctAnswer: currentQuestion.answers[currentQuestion.correct] // Get correct answer text
+            options: currentQuestion.answers,
+            correctAnswer: currentQuestion.answers[currentQuestion.correct]
         },
         totalTime: QUESTION_TIME
     });
