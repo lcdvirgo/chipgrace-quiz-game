@@ -194,21 +194,20 @@ io.on('connection', (socket) => {
                 score: player.score
             }));
     
-        socket.emit('leaderboardData', { players: sortedPlayers });
+        socket.emit('leaderboardData', { 
+            players: sortedPlayers,
+            isLastQuestion: gameState.currentQuestion === gameState.questions.length - 1 
+        });
     });
 
     // Other event handlers remain the same
     socket.on('nextQuestion', () => {
         const player = gameState.players[socket.id];
-        console.log('Received nextQuestion event from client', {
-            playerId: socket.id,
-            isHost: player?.isHost,
+        console.log('Received nextQuestion event:', {
+            socketId: socket.id,
+            player: player,
             currentQuestion: gameState.currentQuestion,
-            gameState: {
-                phase: gameState.phase,
-                players: Object.keys(gameState.players).length,
-                questionsLength: gameState.questions.length
-            }
+            totalQuestions: gameState.questions.length
         });
     
         if (!player) {
