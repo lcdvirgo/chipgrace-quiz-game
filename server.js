@@ -166,13 +166,19 @@ io.on('connection', (socket) => {
     
             gameState.answeredCount++;
             
-            const totalPlayers = Object.keys(gameState.players).length;
-            // Only show results immediately if all players have answered
-            if (gameState.answeredCount === totalPlayers) {
-                clearTimeout(gameState.timer);
-                showResults();
+            // Emit an update to show who has answered
+            io.emit('playerAnswered', {
+                playerCount: gameState.answeredCount,
+                totalPlayers: Object.keys(gameState.players).length
+            });
+            
+            // Check if all players have answered
+            if (gameState.answeredCount === Object.keys(gameState.players).length) {
+                // Wait a short moment before showing results
+                setTimeout(() => {
+                    showResults();
+                }, 1000);
             }
-            // Otherwise, let the timer continue until it reaches 0
         }
     });
 
@@ -242,10 +248,17 @@ function startQuestion() {
 }
 
 function showResults() {
+    if (gameState.phase !== 'question') return; // Prevent duplicate showResults calls
+    
     gameState.phase = 'results';
-    if (gameState.timer) clearTimeout(gameState.timer);
-
     const currentQuestion = gameState.questions[gameState.currentQuestion];
+    
+    // Clear any existing timer
+    if (gameState.timer) {
+        clearTimeout(gameState.timer);
+        gameState.timer = null;
+    }
+
     io.emit('showResults', {
         players: Object.values(gameState.players),
         correctAnswer: currentQuestion.answers[currentQuestion.correct],

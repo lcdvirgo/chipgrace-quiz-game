@@ -292,6 +292,20 @@
             startQuestionTimer(data.totalTime);
         });
 
+        socket.on('playerAnswered', (data) => {
+            const { playerCount, totalPlayers } = data;
+            console.log(`${playerCount} out of ${totalPlayers} players have answered`);
+            
+            // Optional: Update UI to show how many players have answered
+            const questionText = document.getElementById('question-text');
+            if (questionText) {
+                questionText.innerHTML = `
+                    ${questionText.textContent}<br>
+                    <span class="text-sm text-gray-500">${playerCount} out of ${totalPlayers} players have answered</span>
+                `;
+            }
+        });
+
         socket.on('showResults', (data) => {
             if (currentQuestionTimer) {
                 clearInterval(currentQuestionTimer);
@@ -400,13 +414,11 @@
         }
 
         function submitAnswer(index) {
-            // Don't clear the timer when submitting answer
-            // if (currentQuestionTimer) {
-            //     clearInterval(currentQuestionTimer);
-            // }
-
             const answerButtons = document.querySelectorAll('.answer-btn');
-            answerButtons.forEach(btn => btn.disabled = true); // Disable buttons after answering
+            answerButtons.forEach(btn => {
+                btn.disabled = true; // Disable buttons after answering
+                btn.classList.add('opacity-50'); // Visual feedback that buttons are disabled
+            });
 
             const timerText = document.querySelector('.timer-text').textContent;
             const seconds = parseInt(timerText.split(' ')[0]) || 0;
@@ -415,20 +427,16 @@
             const selectedButton = document.getElementById(`answer-${index}`);
             const answer = selectedButton ? selectedButton.textContent : null;
             
-            console.log('Submitting answer:', {
-                answer: answer,
-                timeLeft: timeLeft
-            });
+            // Highlight selected answer without affecting other buttons
+            if (selectedButton) {
+                selectedButton.classList.remove('opacity-50');
+                selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
+            }
             
             socket.emit('submitAnswer', {
                 answer: answer,
                 timeLeft: timeLeft
             });
-
-            // Highlight selected answer
-            if (selectedButton) {
-                selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
-            }
         }
 
         function switchToScreen(screenId) {
