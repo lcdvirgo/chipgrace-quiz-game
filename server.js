@@ -227,8 +227,7 @@ function startQuestion() {
     });
 
     const currentQuestion = gameState.questions[gameState.currentQuestion];
-    console.log('Current question data:', currentQuestion);
-
+    
     const questionData = {
         questionNumber: gameState.currentQuestion + 1,
         questionData: {
@@ -239,10 +238,12 @@ function startQuestion() {
         totalTime: QUESTION_TIME
     };
     
-    console.log('Emitting question data:', questionData);
     io.emit('showQuestion', questionData);
 
+    // Clear any existing timer
     if (gameState.timer) clearTimeout(gameState.timer);
+    
+    // Set timer for showing results
     gameState.timer = setTimeout(() => {
         if (gameState.phase === 'question') {
             showResults();

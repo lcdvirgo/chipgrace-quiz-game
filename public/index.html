@@ -396,39 +396,49 @@
             const timerElement = document.querySelector('.timer-text');
             const progressElement = document.querySelector('.timer-progress');
             let timeLeft = duration;
-            hasAnsweredQuestion = false; // Reset answer state for new question
+            hasAnsweredQuestion = false;
 
             if (currentQuestionTimer) {
                 clearInterval(currentQuestionTimer);
             }
 
+            // Start playing countdown music
+            const countdownMusic = document.getElementById('countdown-music');
+            if (countdownMusic) {
+                countdownMusic.currentTime = 0;
+                countdownMusic.play();
+            }
+
             function updateTimer() {
-                // First update the display
-                timerElement.textContent = `${Math.ceil(timeLeft / 1000)} seconds`;
+                // Update display regardless of answer status
+                const secondsLeft = Math.ceil(timeLeft / 1000);
+                timerElement.textContent = `${secondsLeft} seconds`;
                 progressElement.style.width = `${(timeLeft / duration) * 100}%`;
                 
-                // Then reduce the time
+                // Reduce time
                 timeLeft -= 1000;
                 
-                // Check if time is up after reduction
+                // Check if time is up
                 if (timeLeft < 0) {
                     clearInterval(currentQuestionTimer);
-                    if (!hasAnsweredQuestion) {
-                        submitAnswer(-1); // Only auto-submit if haven't answered
+                    if (countdownMusic) {
+                        countdownMusic.pause();
                     }
+                    if (!hasAnsweredQuestion) {
+                        submitAnswer(-1); // Submit no answer if haven't answered
+                    }
+                    // Don't automatically switch to results - server will handle this
                 }
             }
 
             // Initial state
-            timerElement.textContent = `${Math.ceil(timeLeft / 1000)} seconds`;
-            progressElement.style.width = '100%';
+            updateTimer();
 
             // Start the timer
             currentQuestionTimer = setInterval(updateTimer, 1000);
         }
 
         function submitAnswer(index) {
-            // Only process answer if player hasn't answered this question yet
             if (hasAnsweredQuestion) return;
             
             hasAnsweredQuestion = true;
@@ -440,13 +450,13 @@
                 btn.classList.add('opacity-50');
             });
 
-            // Get current time left
+            // Get current time left from the timer display
             const timerText = document.querySelector('.timer-text').textContent;
             const seconds = parseInt(timerText.split(' ')[0]) || 0;
             const timeLeft = seconds * 1000;
             
             const selectedButton = document.getElementById(`answer-${index}`);
-            const answer = selectedButton ? selectedButton.textContent : null;
+            const answer = selectedButton ? selectedButton.textContent.trim() : null;
             
             // Highlight selected answer
             if (selectedButton) {
@@ -454,12 +464,16 @@
                 selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
             }
             
-            // Submit answer without stopping the timer
+            // Submit answer to server
             socket.emit('submitAnswer', {
                 answer: answer,
                 timeLeft: timeLeft
             });
+            
+            // Don't clear the timer - let it continue running
+            // The server will handle when to show results
         }
+
 
         function switchToScreen(screenId) {
             console.log(`Switching from ${gameState.currentScreen} to ${screenId}`);
