@@ -207,7 +207,12 @@ io.on('connection', (socket) => {
             socketId: socket.id,
             player: player,
             currentQuestion: gameState.currentQuestion,
-            totalQuestions: gameState.questions.length
+            totalQuestions: gameState.questions.length,
+            gameState: {
+                phase: gameState.phase,
+                isStarted: gameState.isStarted,
+                answeredCount: gameState.answeredCount
+            }
         });
     
         if (!player) {

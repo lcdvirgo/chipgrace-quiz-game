@@ -423,28 +423,7 @@
                     </tr>
                 `).join('');
 
-            // Update next button visibility and handler
-            const nextButton = document.getElementById('next-btn');
-            if (nextButton) {
-                // Only show the button for host and if not the last question
-                nextButton.style.display = (isHost && !data.isLastQuestion) ? 'block' : 'none';
-                
-                if (isHost && !data.isLastQuestion) {
-                    // Remove old event listeners and create fresh button
-                    const newNextButton = nextButton.cloneNode(true);
-                    nextButton.parentNode.replaceChild(newNextButton, nextButton);
-                    
-                    // Add new click handler with logging
-                    newNextButton.addEventListener('click', () => {
-                        console.log('Next button clicked, emitting nextQuestion event');
-                        socket.emit('nextQuestion');
-                        // Show loading state
-                        newNextButton.disabled = true;
-                        newNextButton.textContent = 'Loading next question...';
-                    });
-                }
-            }
-            setupNextButton(data.isLastQuestion);
+            setupNextButton(data.isLastQuestion);  // Only call setupNextButton once
         });
 
         socket.on('leaderboardData', (data) => {
@@ -503,6 +482,12 @@
         // Socket error handlers
         socket.on('error', (error) => {
             console.error('Socket error:', error);
+            // Reset next button state
+            const nextButton = document.getElementById('next-btn');
+            if (nextButton) {
+                nextButton.disabled = false;
+                nextButton.textContent = 'Next Question';
+            }
             // Show error message to user
             const connectionStatus = document.getElementById('connection-status');
             if (connectionStatus) {
@@ -724,6 +709,15 @@
                     socket.emit('nextQuestion');
                     newNextButton.disabled = true;
                     newNextButton.textContent = 'Loading next question...';
+                    
+                    // Add timeout to reset button if question doesn't load
+                    setTimeout(() => {
+                        if (newNextButton.disabled) {
+                            console.log('Question load timeout - resetting button');
+                            newNextButton.disabled = false;
+                            newNextButton.textContent = 'Next Question';
+                        }
+                    }, 5000); // 5 second timeout
                 });
             }
         }
