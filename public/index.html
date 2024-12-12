@@ -451,9 +451,9 @@
         function startQuestionTimer(duration) {
             const timerElement = document.querySelector('.timer-text');
             const progressElement = document.querySelector('.timer-progress');
-            const startTime = Date.now();
-            const endTime = startTime + duration;
+            let timeLeft = duration;
             hasAnsweredQuestion = false;
+            let lastUpdate = Date.now();
 
             if (currentQuestionTimer) {
                 clearInterval(currentQuestionTimer);
@@ -462,40 +462,50 @@
             // Only play countdown music if user is host
             if (isHost && countdownMusic) {
                 countdownMusic.currentTime = 0;
-                
-                // Add error handling for audio playback
                 countdownMusic.play().catch(error => {
                     console.log('Audio playback failed:', error);
-                    // Continue with timer even if audio fails
                 });
             }
 
             function updateTimer() {
                 const now = Date.now();
-                const timeLeft = Math.max(endTime - now, 0);
-                const secondsLeft = Math.floor(timeLeft / 1000);
+                const delta = now - lastUpdate;
+                lastUpdate = now;
                 
-                // Update display regardless of answer status
+                // Ensure timeLeft doesn't go below 0
+                timeLeft = Math.max(0, timeLeft - delta);
+                
+                // Calculate seconds and percentage
+                const secondsLeft = Math.ceil(timeLeft / 1000);
+                const percentage = (timeLeft / duration) * 100;
+                
+                // Update UI
                 timerElement.textContent = `${secondsLeft} seconds`;
-                progressElement.style.width = `${(timeLeft / duration) * 100}%`;
+                progressElement.style.width = `${percentage}%`;
                 
-                // Check if time is up
+                // Check if timer has reached 0
                 if (timeLeft <= 0) {
                     clearInterval(currentQuestionTimer);
+                    currentQuestionTimer = null;
+                    
                     if (isHost && countdownMusic) {
                         countdownMusic.pause();
                         countdownMusic.currentTime = 0;
                     }
+                    
                     if (!hasAnsweredQuestion) {
                         submitAnswer(-1); // Submit no answer if haven't answered
                     }
                 }
             }
 
-            // Update every 50ms for smoother countdown
+            // Start with initial update
+            updateTimer();
+            
+            // Update frequently for smooth countdown
             currentQuestionTimer = setInterval(updateTimer, 50);
-            updateTimer(); // Initial update
         }
+
 
         function submitAnswer(index) {
             if (hasAnsweredQuestion) return;
@@ -503,14 +513,15 @@
             hasAnsweredQuestion = true;
             const answerButtons = document.querySelectorAll('.answer-btn');
             
-            // Disable and fade out all buttons
+            // Disable and fade out all buttons except selected
             answerButtons.forEach(btn => {
                 btn.disabled = true;
                 btn.classList.add('opacity-50');
             });
 
-            const timerElement = document.querySelector('.timer-text');
-            const seconds = parseInt(timerElement.textContent) || 0;
+            // Get current time left
+            const timerText = document.querySelector('.timer-text').textContent;
+            const seconds = parseInt(timerText.split(' ')[0]) || 0;
             const timeLeft = seconds * 1000;
             
             const selectedButton = document.getElementById(`answer-${index}`);
@@ -522,12 +533,25 @@
                 selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
             }
             
+            // Submit answer
             socket.emit('submitAnswer', {
                 answer: answer,
                 timeLeft: timeLeft
             });
             
-            // Timer continues running - don't clear it
+            // Timer continues running - don't clear it!
+        }
+
+        function cleanupQuestion() {
+            if (currentQuestionTimer) {
+                clearInterval(currentQuestionTimer);
+                currentQuestionTimer = null;
+            }
+            
+            if (isHost && countdownMusic) {
+                countdownMusic.pause();
+                countdownMusic.currentTime = 0;
+            }
         }
 
 
