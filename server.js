@@ -92,21 +92,22 @@ const quizQuestions = [
     }
 ];
 
-// Game state
+// Game state with added timerStart field
 let gameState = {
     phase: 'waiting',
     currentQuestion: 0,
     players: {},
     isStarted: false,
     answeredCount: 0,
-    questions: [...quizQuestions], // Create a copy of the questions
-    timer: null
+    questions: [...quizQuestions],
+    timer: null,
+    timerStart: null // Track when the timer started
 };
 
-// Socket connection handling
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
+    // Previous event handlers remain the same until startQuestion
     socket.on('joinGame', (data) => {
         const { name, isHost } = data;
         console.log(`Player ${name} joining game (Host: ${isHost})`);
@@ -160,31 +161,31 @@ io.on('connection', (socket) => {
             player.currentAnswer = data.answer;
             
             if (data.answer === correctAnswer) {
-                const timeBonus = Math.floor((data.timeLeft / QUESTION_TIME) * 1000);
+                // Calculate time bonus based on server-side timer
+                const timeElapsed = Date.now() - gameState.timerStart;
+                const timeLeft = Math.max(0, QUESTION_TIME - timeElapsed);
+                const timeBonus = Math.floor((timeLeft / QUESTION_TIME) * 1000);
                 player.score += 1000 + timeBonus;
             }
     
             gameState.answeredCount++;
             
-            // Emit the player count update
             io.emit('playerAnswered', {
                 playerCount: gameState.answeredCount,
                 totalPlayers: Object.keys(gameState.players).length
             });
             
-            // If all players have answered, show results immediately
             if (gameState.answeredCount === Object.keys(gameState.players).length) {
-                // Clear the server-side timer
                 if (gameState.timer) {
                     clearTimeout(gameState.timer);
                     gameState.timer = null;
                 }
-                // Show results immediately
                 showResults();
             }
         }
     });
 
+    // Other event handlers remain the same
     socket.on('nextQuestion', () => {
         const player = gameState.players[socket.id];
         if (player?.isHost) {
@@ -213,15 +214,13 @@ io.on('connection', (socket) => {
     });
 });
 
-
-
-// Helper functions
 function startQuestion() {
     console.log('Starting question:', gameState.currentQuestion);
     
     gameState.phase = 'question';
     gameState.answeredCount = 0;
     gameState.allAnswered = false;
+    gameState.timerStart = Date.now(); // Record when the timer starts
     
     Object.values(gameState.players).forEach(p => {
         p.currentAnswer = null;
@@ -236,20 +235,21 @@ function startQuestion() {
             options: currentQuestion.answers,
             correctAnswer: currentQuestion.answers[currentQuestion.correct]
         },
-        totalTime: QUESTION_TIME
+        totalTime: QUESTION_TIME,
+        serverTime: Date.now() // Send server time for synchronization
     };
     
     io.emit('showQuestion', questionData);
 
-    // Clear any existing timer
     if (gameState.timer) clearTimeout(gameState.timer);
     
     // Set timer for showing results
     gameState.timer = setTimeout(() => {
         if (gameState.phase === 'question') {
+            console.log('Timer expired, showing results');
             showResults();
         }
-    }, QUESTION_TIME + 100); // Add small buffer to ensure client-side timer completes
+    }, QUESTION_TIME);
 }
 
 function showResults() {
@@ -295,7 +295,6 @@ function endGame() {
     
     io.emit('gameOver', { winners });
 }
-
 
 // Start server
 const PORT = process.env.PORT || 3000;

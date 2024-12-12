@@ -260,7 +260,7 @@
 
         socket.on('showQuestion', (data) => {
             console.log('Received question data:', data);
-            const { questionData } = data;
+            const { questionData, serverTime } = data;
             
             // Reset answer state for new question
             hasAnsweredQuestion = false;
@@ -294,8 +294,8 @@
                 </button>
             `).join('');
 
-            // Start timer
-            startQuestionTimer(data.totalTime);
+            // Start timer with server time synchronization
+            startQuestionTimer(data.totalTime, serverTime);
         });
 
         socket.on('playerAnswered', (data) => {
@@ -453,8 +453,11 @@
             const progressElement = document.querySelector('.timer-progress');
             let timeLeft = duration;
             hasAnsweredQuestion = false;
-            let startTime = Date.now();
-            let endTime = startTime + duration;
+
+            // Synchronize with server time
+            const serverTimeOffset = data.serverTime ? Date.now() - data.serverTime : 0;
+            const startTime = Date.now() - serverTimeOffset;
+            const endTime = startTime + duration;
 
             if (currentQuestionTimer) {
                 clearInterval(currentQuestionTimer);
@@ -469,7 +472,7 @@
             }
 
             function updateTimer() {
-                const now = Date.now();
+                const now = Date.now() - serverTimeOffset;
                 const remaining = Math.max(0, endTime - now);
                 const secondsLeft = Math.ceil(remaining / 1000);
                 const percentage = (remaining / duration) * 100;
@@ -478,7 +481,7 @@
                 timerElement.textContent = `${secondsLeft} seconds`;
                 progressElement.style.width = `${percentage}%`;
                 
-                // Check if time is really up (using actual timestamps)
+                // Check if time is up
                 if (now >= endTime) {
                     clearInterval(currentQuestionTimer);
                     currentQuestionTimer = null;
@@ -488,12 +491,12 @@
                         countdownMusic.currentTime = 0;
                     }
                     
-                    // Submit no answer if haven't answered
+                    // Force submit no answer if haven't answered
                     if (!hasAnsweredQuestion) {
                         submitAnswer(-1);
                     }
 
-                    // The server will handle showing results when timer expires or all players answer
+                    // The server will handle showing results
                     return;
                 }
             }
