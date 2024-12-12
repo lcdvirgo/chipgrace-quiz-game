@@ -128,20 +128,24 @@ io.on('connection', (socket) => {
     });
 
     socket.on('startGame', () => {
+        console.log('Received startGame event from client');
         const player = gameState.players[socket.id];
         if (player?.isHost) {
+            console.log('Starting game as host');
             gameState.isStarted = true;
             gameState.currentQuestion = 0;
             gameState.phase = 'question';
             gameState.answeredCount = 0;
-
+    
             // Reset all players' scores
             Object.values(gameState.players).forEach(p => {
                 p.score = 0;
                 p.currentAnswer = null;
             });
-
+    
             startQuestion();
+        } else {
+            console.log('Non-host tried to start game');
         }
     });
 
@@ -196,6 +200,8 @@ io.on('connection', (socket) => {
         }
     });
 });
+
+
 
 // Helper functions
 function startQuestion() {

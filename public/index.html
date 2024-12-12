@@ -196,10 +196,16 @@
             reconnectionAttempts: 5,
             reconnectionDelay: 1000
         });
+        const gameState = {
+            currentScreen: 'registration',
+            questionNumber: 0,
+            score: 0
+        };
 
         let playerId = null;
         let isHost = false;
         let currentQuestionTimer = null;
+        
 
         // Join game handler
         document.getElementById('join-game-form').addEventListener('submit', (e) => {
@@ -256,34 +262,31 @@
             console.log('Processing question:', questionData.question);
             console.log('Options:', questionData.options);
 
-            // First hide waiting room
-            document.getElementById('waiting-room').classList.add('hidden');
-            document.getElementById('registration-screen').classList.add('hidden');
+            // Hide all screens first
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+                screen.classList.remove('active');
+            });
             
-            // Then show question screen
+            // Show question screen
             const questionScreen = document.getElementById('question-screen');
             questionScreen.classList.remove('hidden');
+            questionScreen.classList.add('active');
 
             // Update question text
             document.getElementById('question-text').textContent = questionData.question;
 
             // Update answer buttons
-            const answerButtons = document.querySelectorAll('.answer-btn');
-            answerButtons.forEach(button => {
-                button.style.display = 'none'; // Hide all buttons first
-                button.disabled = true; // Disable all buttons
-            });
-
-            // Show and update only the buttons we need
-            questionData.options.forEach((option, index) => {
-                const button = document.getElementById(`answer-${index}`);
-                if (button) {
-                    button.style.display = 'block';
-                    button.textContent = option;
-                    button.disabled = false;
-                    button.onclick = () => submitAnswer(index); // Directly set onclick handler
-                }
-            });
+            const answerContainer = questionScreen.querySelector('.grid');
+            answerContainer.innerHTML = questionData.options.map((option, index) => `
+                <button 
+                    id="answer-${index}" 
+                    onclick="submitAnswer(${index})"
+                    class="answer-btn bg-${index === 0 ? 'red' : index === 1 ? 'blue' : index === 2 ? 'yellow' : 'green'}-500 
+                        text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform">
+                    ${option}
+                </button>
+            `).join('');
 
             // Start timer
             startQuestionTimer(data.totalTime);
@@ -422,12 +425,27 @@
             });
         }
 
+        function switchToScreen(screenId) {
+            console.log(`Switching from ${gameState.currentScreen} to ${screenId}`);
+            gameState.currentScreen = screenId;
+            
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+                screen.classList.remove('active');
+            });
+            
+            const targetScreen = document.getElementById(screenId);
+            if (targetScreen) {
+                targetScreen.classList.remove('hidden');
+                targetScreen.classList.add('active');
+            }
+        }
+
         // Start game button handler
         document.getElementById('start-game-btn').addEventListener('click', () => {
             if (isHost) {
                 console.log('Host starting game...');
-                // Hide waiting room immediately
-                document.getElementById('waiting-room').classList.add('hidden');
+                switchToScreen('question-screen'); // Switch screen immediately
                 socket.emit('startGame');
             }
         });
