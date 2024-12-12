@@ -203,27 +203,52 @@ io.on('connection', (socket) => {
         console.log('Received nextQuestion event from client', {
             playerId: socket.id,
             isHost: player?.isHost,
-            currentQuestion: gameState.currentQuestion
+            currentQuestion: gameState.currentQuestion,
+            gameState: {
+                phase: gameState.phase,
+                players: Object.keys(gameState.players).length,
+                questionsLength: gameState.questions.length
+            }
         });
     
-        if (player?.isHost) {
-            console.log('Host requesting next question');
-            gameState.currentQuestion++;
+        if (!player) {
+            console.error('Player not found for socket ID:', socket.id);
+            return;
+        }
+    
+        if (!player.isHost) {
+            console.error('Non-host tried to request next question:', {
+                playerName: player.name,
+                isHost: player.isHost
+            });
+            return;
+        }
+    
+        console.log('Host requesting next question');
+        gameState.currentQuestion++;
+        
+        if (gameState.currentQuestion >= gameState.questions.length) {
+            console.log('No more questions, ending game');
+            endGame();
+        } else {
+            console.log('Starting next question:', {
+                questionNumber: gameState.currentQuestion,
+                question: gameState.questions[gameState.currentQuestion]
+            });
             
-            if (gameState.currentQuestion >= gameState.questions.length) {
-                console.log('No more questions, ending game');
-                endGame();
-            } else {
-                console.log('Starting next question:', gameState.currentQuestion);
-                // Reset game state for new question
-                gameState.phase = 'question';
-                gameState.answeredCount = 0;
-                
+            // Reset game state for new question
+            gameState.phase = 'question';
+            gameState.answeredCount = 0;
+            
+            try {
                 // Start new question immediately
                 startQuestion();
+            } catch (error) {
+                console.error('Error starting next question:', error);
+                // Reset game state on error
+                gameState.currentQuestion--;
+                gameState.phase = 'results';
             }
-        } else {
-            console.log('Non-host tried to request next question');
         }
     });
 
@@ -243,51 +268,66 @@ io.on('connection', (socket) => {
 });
 
 function startQuestion() {
-    console.log('Starting question:', gameState.currentQuestion);
-    
-    gameState.phase = 'question';
-    gameState.answeredCount = 0;
-    gameState.allAnswered = false;
-    gameState.timerStart = Date.now();
-    
-    // Reset all players' current answers
-    Object.values(gameState.players).forEach(p => {
-        p.currentAnswer = null;
+    console.log('Starting question execution:', {
+        questionNumber: gameState.currentQuestion,
+        phase: gameState.phase,
+        totalPlayers: Object.keys(gameState.players).length
     });
+    
+    try {
+        gameState.phase = 'question';
+        gameState.answeredCount = 0;
+        gameState.allAnswered = false;
+        gameState.timerStart = Date.now();
+        
+        // Reset all players' current answers
+        Object.values(gameState.players).forEach(p => {
+            p.currentAnswer = null;
+        });
 
-    const currentQuestion = gameState.questions[gameState.currentQuestion];
-    
-    const questionData = {
-        questionNumber: gameState.currentQuestion + 1,
-        questionData: {
-            question: currentQuestion.question,
-            options: currentQuestion.answers,
-            correctAnswer: currentQuestion.answers[currentQuestion.correct]
-        },
-        totalTime: QUESTION_TIME
-    };
-    
-    console.log('Emitting new question to all clients:', questionData);
-    io.emit('showQuestion', questionData);
-
-    // Clear any existing timer
-    if (gameState.timer) {
-        clearTimeout(gameState.timer);
-    }
-    
-    // Set timer for showing results
-    gameState.timer = setTimeout(() => {
-        if (gameState.phase === 'question') {
-            console.log('Timer expired, handling unanswered players');
-            Object.entries(gameState.players).forEach(([socketId, player]) => {
-                if (player.currentAnswer === null) {
-                    player.currentAnswer = null;
-                    gameState.answeredCount++;
-                }
-            });
-            showResults();
+        const currentQuestion = gameState.questions[gameState.currentQuestion];
+        
+        if (!currentQuestion) {
+            throw new Error('Question not found at index: ' + gameState.currentQuestion);
         }
-    }, QUESTION_TIME);
+
+        const questionData = {
+            questionNumber: gameState.currentQuestion + 1,
+            questionData: {
+                question: currentQuestion.question,
+                options: currentQuestion.answers,
+                correctAnswer: currentQuestion.answers[currentQuestion.correct]
+            },
+            totalTime: QUESTION_TIME
+        };
+        
+        console.log('Emitting new question to all clients:', questionData);
+        io.emit('showQuestion', questionData);
+
+        // Clear any existing timer
+        if (gameState.timer) {
+            clearTimeout(gameState.timer);
+        }
+        
+        // Set timer for showing results
+        gameState.timer = setTimeout(() => {
+            if (gameState.phase === 'question') {
+                console.log('Timer expired, handling unanswered players');
+                Object.entries(gameState.players).forEach(([socketId, player]) => {
+                    if (player.currentAnswer === null) {
+                        player.currentAnswer = null;
+                        gameState.answeredCount++;
+                    }
+                });
+                showResults();
+            }
+        }, QUESTION_TIME);
+        
+        console.log('Question start completed successfully');
+    } catch (error) {
+        console.error('Error in startQuestion:', error);
+        throw error;
+    }
 }
 
 function showResults() {
