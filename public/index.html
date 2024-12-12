@@ -259,32 +259,28 @@
         });
 
         socket.on('showQuestion', (data) => {
-            console.log('Received question data:', data);
-            const { questionData, serverTime } = data;
+            console.log('Received new question:', data);
             
-            // Reset answer state for new question
+            // Reset answer state
             hasAnsweredQuestion = false;
             
-            console.log('Processing question:', questionData.question);
-            console.log('Options:', questionData.options);
-
-            // Hide all screens first
+            // Hide all screens and show question screen
             document.querySelectorAll('.screen').forEach(screen => {
                 screen.classList.add('hidden');
                 screen.classList.remove('active');
             });
             
-            // Show question screen
             const questionScreen = document.getElementById('question-screen');
             questionScreen.classList.remove('hidden');
             questionScreen.classList.add('active');
 
-            // Update question text
-            document.getElementById('question-text').textContent = questionData.question;
+            // Update question text and number
+            const questionText = document.getElementById('question-text');
+            questionText.textContent = `${data.questionData.question}`;
 
-            // Update answer buttons
+            // Reset and update answer buttons
             const answerContainer = questionScreen.querySelector('.grid');
-            answerContainer.innerHTML = questionData.options.map((option, index) => `
+            answerContainer.innerHTML = data.questionData.options.map((option, index) => `
                 <button 
                     id="answer-${index}" 
                     onclick="submitAnswer(${index})"
@@ -294,8 +290,8 @@
                 </button>
             `).join('');
 
-            // Start timer with server time synchronization
-            startQuestionTimer(data.totalTime, serverTime);
+            // Start new timer
+            startQuestionTimer(data.totalTime);
         });
 
         socket.on('playerAnswered', (data) => {
@@ -393,8 +389,12 @@
         socket.on('showLeaderboard', (data) => {
             document.querySelectorAll('.screen').forEach(screen => {
                 screen.classList.add('hidden');
+                screen.classList.remove('active');
             });
-            document.getElementById('leaderboard-screen').classList.remove('hidden');
+            
+            const leaderboardScreen = document.getElementById('leaderboard-screen');
+            leaderboardScreen.classList.remove('hidden');
+            leaderboardScreen.classList.add('active');
 
             const leaderboardBody = document.getElementById('leaderboard-body');
             leaderboardBody.innerHTML = data.players
@@ -403,28 +403,38 @@
                     <tr class="transition-all hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
-                                <span class="text-sm font-medium ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-500' : index === 2 ? 'text-amber-600' : 'text-gray-900'}">${index + 1}</span>
+                                ${getRankBadge(index)}
+                                <span class="ml-2 text-sm font-medium text-gray-900">${index + 1}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">${player.name}</div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                            ${player.score}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span class="font-semibold">${player.score.toLocaleString()}</span>
                         </td>
                     </tr>
                 `).join('');
 
+            // Update next button visibility and handler
             const nextButton = document.getElementById('next-btn');
             if (nextButton) {
                 if (data.isLastQuestion) {
                     nextButton.style.display = 'none';
                 } else {
-                    nextButton.style.display = 'block';
+                    // Only show next button for host
+                    nextButton.style.display = isHost ? 'block' : 'none';
+                    
                     if (isHost) {
-                        nextButton.addEventListener('click', () => socket.emit('nextQuestion'), { once: true });
-                    } else {
-                        nextButton.style.display = 'none';
+                        // Remove any existing event listeners first
+                        nextButton.replaceWith(nextButton.cloneNode(true));
+                        const newNextButton = document.getElementById('next-btn');
+                        
+                        // Add new click handler
+                        newNextButton.addEventListener('click', () => {
+                            console.log('Host requesting next question');
+                            socket.emit('nextQuestion');
+                        });
                     }
                 }
             }
