@@ -415,11 +415,14 @@
 
         function submitAnswer(index) {
             const answerButtons = document.querySelectorAll('.answer-btn');
+            
+            // Disable and fade out all buttons
             answerButtons.forEach(btn => {
-                btn.disabled = true; // Disable buttons after answering
-                btn.classList.add('opacity-50'); // Visual feedback that buttons are disabled
+                btn.disabled = true;
+                btn.classList.add('opacity-50');
             });
 
+            // Get current time left
             const timerText = document.querySelector('.timer-text').textContent;
             const seconds = parseInt(timerText.split(' ')[0]) || 0;
             const timeLeft = seconds * 1000;
@@ -427,12 +430,13 @@
             const selectedButton = document.getElementById(`answer-${index}`);
             const answer = selectedButton ? selectedButton.textContent : null;
             
-            // Highlight selected answer without affecting other buttons
+            // Highlight selected answer
             if (selectedButton) {
                 selectedButton.classList.remove('opacity-50');
                 selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
             }
             
+            // Submit answer but don't stop the timer
             socket.emit('submitAnswer', {
                 answer: answer,
                 timeLeft: timeLeft
