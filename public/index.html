@@ -400,12 +400,13 @@
         }
 
         function submitAnswer(index) {
-            if (currentQuestionTimer) {
-                clearInterval(currentQuestionTimer);
-            }
+            // Don't clear the timer when submitting answer
+            // if (currentQuestionTimer) {
+            //     clearInterval(currentQuestionTimer);
+            // }
 
             const answerButtons = document.querySelectorAll('.answer-btn');
-            answerButtons.forEach(btn => btn.disabled = true);
+            answerButtons.forEach(btn => btn.disabled = true); // Disable buttons after answering
 
             const timerText = document.querySelector('.timer-text').textContent;
             const seconds = parseInt(timerText.split(' ')[0]) || 0;
@@ -423,6 +424,11 @@
                 answer: answer,
                 timeLeft: timeLeft
             });
+
+            // Highlight selected answer
+            if (selectedButton) {
+                selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
+            }
         }
 
         function switchToScreen(screenId) {

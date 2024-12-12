@@ -167,9 +167,12 @@ io.on('connection', (socket) => {
             gameState.answeredCount++;
             
             const totalPlayers = Object.keys(gameState.players).length;
+            // Only show results immediately if all players have answered
             if (gameState.answeredCount === totalPlayers) {
+                clearTimeout(gameState.timer);
                 showResults();
             }
+            // Otherwise, let the timer continue until it reaches 0
         }
     });
 
