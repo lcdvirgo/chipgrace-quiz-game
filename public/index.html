@@ -292,6 +292,43 @@
                 </div>
             `).join('');
         }
+
+        document.getElementById('start-game-btn').addEventListener('click', () => {
+            if (isHost) {
+                console.log('Host starting game...');
+                socket.emit('startGame');
+            }
+        });
+
+        socket.on('showQuestion', (data) => {
+            console.log('Received question data:', data);
+            showScreen('question-screen');
+            startQuestionTimer(data.totalTime);
+            if (data.questionData) {
+                displayQuestion(data.questionData);
+            }
+        });
+
+        function displayQuestion(questionData) {
+            console.log('Displaying question:', questionData);
+            
+            if (!questionData || !questionData.question || !questionData.options) {
+                console.error('Invalid question data structure:', questionData);
+                return;
+            }
+
+            // Update question text
+            document.getElementById('question-text').textContent = questionData.question;
+
+            // Update answer buttons
+            const answerButtons = document.querySelectorAll('.answer-btn');
+            questionData.options.forEach((option, index) => {
+                if (answerButtons[index]) {
+                    answerButtons[index].textContent = option;
+                    answerButtons[index].disabled = false;
+                }
+            });
+        }
     
         function startQuestionTimer(duration) {
             const timerElement = document.querySelector('.timer-text');

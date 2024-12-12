@@ -8,12 +8,17 @@ const { Server } = require("socket.io");
 const io = new Server(server, {
     cors: {
         origin: ["https://chipgrace-quiz-game.netlify.app", "http://localhost:3000"],
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-        credentials: true
+        methods: ["GET", "POST"],
+        credentials: true,
+        allowedHeaders: ["Access-Control-Allow-Origin"]
     }
 });
 
+// Game configuration
+const QUESTION_TIME = 30000; // 30 seconds
+const REVEAL_TIME = 5000; // 5 seconds for showing results
+
+// Quiz questions
 const quizQuestions = [
     {
         question: "What colour was Chip and Grace's outfit on their first date?",
@@ -87,10 +92,6 @@ const quizQuestions = [
     }
 ];
 
-// Game configuration
-const QUESTION_TIME = 30000; // 30 seconds
-const REVEAL_TIME = 5000; // 5 seconds for showing results
-
 // Game state
 let gameState = {
     phase: 'waiting',
@@ -98,16 +99,14 @@ let gameState = {
     players: {},
     isStarted: false,
     answeredCount: 0,
-    questions: quizQuestions, // Initialize with our questions
+    questions: [...quizQuestions], // Create a copy of the questions
     timer: null
 };
-
 
 // Socket connection handling
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    // Handle player joining
     socket.on('joinGame', (data) => {
         const { name, isHost } = data;
         console.log(`Player ${name} joining game (Host: ${isHost})`);
@@ -128,7 +127,6 @@ io.on('connection', (socket) => {
         io.emit('updatePlayers', Object.values(gameState.players));
     });
 
-    // Handle game start
     socket.on('startGame', () => {
         const player = gameState.players[socket.id];
         if (player?.isHost) {
@@ -147,10 +145,9 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Handle answer submission
     socket.on('submitAnswer', (data) => {
         if (!gameState.isStarted || gameState.phase !== 'question') return;
-    
+
         const player = gameState.players[socket.id];
         const currentQuestion = gameState.questions[gameState.currentQuestion];
         
@@ -161,7 +158,7 @@ io.on('connection', (socket) => {
                 const timeBonus = Math.floor((data.timeLeft / QUESTION_TIME) * 1000);
                 player.score += 1000 + timeBonus;
             }
-    
+
             gameState.answeredCount++;
             
             const totalPlayers = Object.keys(gameState.players).length;
@@ -171,7 +168,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Handle next question request
     socket.on('nextQuestion', () => {
         const player = gameState.players[socket.id];
         if (player?.isHost) {
@@ -185,15 +181,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Handle show leaderboard request
-    socket.on('showLeaderboard', () => {
-        const player = gameState.players[socket.id];
-        if (player?.isHost) {
-            showLeaderboard();
-        }
-    });
-
-    // Handle disconnection
     socket.on('disconnect', () => {
         const player = gameState.players[socket.id];
         if (player) {
@@ -217,8 +204,9 @@ function startQuestion() {
     Object.values(gameState.players).forEach(p => {
         p.currentAnswer = null;
     });
-    
+
     const currentQuestion = gameState.questions[gameState.currentQuestion];
+    console.log('Sending question:', currentQuestion); // Debug log
     
     io.emit('showQuestion', {
         questionNumber: gameState.currentQuestion + 1,
@@ -229,7 +217,6 @@ function startQuestion() {
         totalTime: QUESTION_TIME
     });
 
-    // Set timer to automatically show results after question time
     if (gameState.timer) clearTimeout(gameState.timer);
     gameState.timer = setTimeout(() => {
         if (gameState.phase === 'question') {
@@ -246,7 +233,8 @@ function showResults() {
     io.emit('showResults', {
         players: Object.values(gameState.players),
         correctAnswer: currentQuestion.correctAnswer,
-        question: currentQuestion.question
+        question: currentQuestion.question,
+        options: currentQuestion.options
     });
 }
 
@@ -271,6 +259,7 @@ function endGame() {
     
     io.emit('gameOver', { winners });
 }
+
 
 // Start server
 const PORT = process.env.PORT || 3000;
