@@ -185,6 +185,18 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('requestLeaderboard', () => {
+        // Sort players by score and send back to client
+        const sortedPlayers = Object.values(gameState.players)
+            .sort((a, b) => b.score - a.score)
+            .map(player => ({
+                name: player.name,
+                score: player.score
+            }));
+    
+        socket.emit('leaderboardData', { players: sortedPlayers });
+    });
+
     // Other event handlers remain the same
     socket.on('nextQuestion', () => {
         const player = gameState.players[socket.id];
