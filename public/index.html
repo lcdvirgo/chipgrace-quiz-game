@@ -259,40 +259,40 @@
         });
 
         socket.on('showQuestion', (data) => {
-        console.log('Received new question:', data);
-        
-        // Reset answer state
-        hasAnsweredQuestion = false;
-        
-        // Hide all screens and show question screen
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.add('hidden');
-            screen.classList.remove('active');
+            console.log('Received new question:', data);
+            
+            // Reset game state
+            hasAnsweredQuestion = false;
+            
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+                screen.classList.remove('active');
+            });
+            
+            // Show question screen
+            const questionScreen = document.getElementById('question-screen');
+            questionScreen.classList.remove('hidden');
+            questionScreen.classList.add('active');
+
+            // Update question content
+            document.getElementById('question-text').textContent = data.questionData.question;
+
+            // Update answer buttons
+            const answerContainer = questionScreen.querySelector('.grid');
+            answerContainer.innerHTML = data.questionData.options.map((option, index) => `
+                <button 
+                    id="answer-${index}" 
+                    onclick="submitAnswer(${index})"
+                    class="answer-btn bg-${index === 0 ? 'red' : index === 1 ? 'blue' : index === 2 ? 'yellow' : 'green'}-500 
+                        text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform">
+                    ${option}
+                </button>
+            `).join('');
+
+            // Start new timer
+            startQuestionTimer(data.totalTime);
         });
-        
-        const questionScreen = document.getElementById('question-screen');
-        questionScreen.classList.remove('hidden');
-        questionScreen.classList.add('active');
-
-        // Update question text and number
-        const questionText = document.getElementById('question-text');
-        questionText.textContent = `${data.questionData.question}`;
-
-        // Reset and update answer buttons
-        const answerContainer = questionScreen.querySelector('.grid');
-        answerContainer.innerHTML = data.questionData.options.map((option, index) => `
-            <button 
-                id="answer-${index}" 
-                onclick="submitAnswer(${index})"
-                class="answer-btn bg-${index === 0 ? 'red' : index === 1 ? 'blue' : index === 2 ? 'yellow' : 'green'}-500 
-                    text-white p-6 rounded-lg text-lg hover:scale-105 transition-transform">
-                ${option}
-            </button>
-        `).join('');
-
-        // Start new timer
-        startQuestionTimer(data.totalTime);
-    });
 
         socket.on('playerAnswered', (data) => {
             const { playerCount, totalPlayers } = data;
@@ -389,15 +389,20 @@
 
 
         socket.on('showLeaderboard', (data) => {
+            console.log('Showing leaderboard with data:', data);
+            
+            // Hide all screens
             document.querySelectorAll('.screen').forEach(screen => {
                 screen.classList.add('hidden');
                 screen.classList.remove('active');
             });
             
+            // Show leaderboard screen
             const leaderboardScreen = document.getElementById('leaderboard-screen');
             leaderboardScreen.classList.remove('hidden');
             leaderboardScreen.classList.add('active');
 
+            // Update leaderboard content
             const leaderboardBody = document.getElementById('leaderboard-body');
             leaderboardBody.innerHTML = data.players
                 .sort((a, b) => b.score - a.score)
@@ -421,23 +426,22 @@
             // Update next button visibility and handler
             const nextButton = document.getElementById('next-btn');
             if (nextButton) {
-                if (data.isLastQuestion) {
-                    nextButton.style.display = 'none';
-                } else {
-                    // Only show next button for host
-                    nextButton.style.display = isHost ? 'block' : 'none';
+                // Only show the button for host and if not the last question
+                nextButton.style.display = (isHost && !data.isLastQuestion) ? 'block' : 'none';
+                
+                if (isHost && !data.isLastQuestion) {
+                    // Remove old event listeners and create fresh button
+                    const newNextButton = nextButton.cloneNode(true);
+                    nextButton.parentNode.replaceChild(newNextButton, nextButton);
                     
-                    if (isHost) {
-                        // Remove any existing event listeners first
-                        nextButton.replaceWith(nextButton.cloneNode(true));
-                        const newNextButton = document.getElementById('next-btn');
-                        
-                        // Add new click handler
-                        newNextButton.addEventListener('click', () => {
-                            console.log('Host requesting next question');
-                            socket.emit('nextQuestion');
-                        });
-                    }
+                    // Add new click handler with logging
+                    newNextButton.addEventListener('click', () => {
+                        console.log('Next button clicked, emitting nextQuestion event');
+                        socket.emit('nextQuestion');
+                        // Show loading state
+                        newNextButton.disabled = true;
+                        newNextButton.textContent = 'Loading next question...';
+                    });
                 }
             }
         });

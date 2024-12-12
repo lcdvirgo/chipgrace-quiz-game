@@ -200,14 +200,30 @@ io.on('connection', (socket) => {
     // Other event handlers remain the same
     socket.on('nextQuestion', () => {
         const player = gameState.players[socket.id];
+        console.log('Received nextQuestion event from client', {
+            playerId: socket.id,
+            isHost: player?.isHost,
+            currentQuestion: gameState.currentQuestion
+        });
+    
         if (player?.isHost) {
+            console.log('Host requesting next question');
             gameState.currentQuestion++;
             
             if (gameState.currentQuestion >= gameState.questions.length) {
+                console.log('No more questions, ending game');
                 endGame();
             } else {
+                console.log('Starting next question:', gameState.currentQuestion);
+                // Reset game state for new question
+                gameState.phase = 'question';
+                gameState.answeredCount = 0;
+                
+                // Start new question immediately
                 startQuestion();
             }
+        } else {
+            console.log('Non-host tried to request next question');
         }
     });
 
@@ -234,6 +250,7 @@ function startQuestion() {
     gameState.allAnswered = false;
     gameState.timerStart = Date.now();
     
+    // Reset all players' current answers
     Object.values(gameState.players).forEach(p => {
         p.currentAnswer = null;
     });
@@ -250,25 +267,25 @@ function startQuestion() {
         totalTime: QUESTION_TIME
     };
     
+    console.log('Emitting new question to all clients:', questionData);
     io.emit('showQuestion', questionData);
 
-    if (gameState.timer) clearTimeout(gameState.timer);
+    // Clear any existing timer
+    if (gameState.timer) {
+        clearTimeout(gameState.timer);
+    }
     
     // Set timer for showing results
     gameState.timer = setTimeout(() => {
         if (gameState.phase === 'question') {
             console.log('Timer expired, handling unanswered players');
-            
-            // Force submit null answers for players who haven't answered
             Object.entries(gameState.players).forEach(([socketId, player]) => {
                 if (player.currentAnswer === null) {
                     player.currentAnswer = null;
                     gameState.answeredCount++;
                 }
             });
-            
-            console.log('Showing results after timeout');
-            showResults(); // This call is correct
+            showResults();
         }
     }, QUESTION_TIME);
 }
