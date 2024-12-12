@@ -254,6 +254,7 @@
         });
     
         socket.on('showQuestion', (data) => {
+            console.log('Received question data:', data); // Debug log
             showScreen('question-screen');
             startQuestionTimer(data.totalTime);
             displayQuestion(data.questionData);
@@ -311,19 +312,37 @@
         }
 
         function displayQuestion(questionData) {
-            if (!questionData || !questionData.question || !questionData.options) {
-                console.error('Invalid question data received:', questionData);
+            console.log('Displaying question:', questionData); // Debug log
+            
+            if (!questionData) {
+                console.error('No question data received');
                 return;
             }
 
-            document.getElementById('question-text').textContent = questionData.question;
-            
-            // Update the answer buttons
+            if (!questionData.question || !questionData.options) {
+                console.error('Invalid question data structure:', questionData);
+                return;
+            }
+
+            // Update question text
+            const questionElement = document.getElementById('question-text');
+            if (questionElement) {
+                questionElement.textContent = questionData.question;
+            }
+
+            // Update answer buttons
             questionData.options.forEach((option, index) => {
                 const button = document.getElementById(`answer-${index}`);
                 if (button) {
                     button.textContent = option;
                     button.disabled = false;
+                    
+                    // Remove previous event listeners
+                    const newButton = button.cloneNode(true);
+                    button.parentNode.replaceChild(newButton, button);
+                    
+                    // Add new event listener
+                    newButton.addEventListener('click', () => submitAnswer(index));
                 }
             });
         }
@@ -388,14 +407,18 @@
                 </tr>
             `).join('');
         }
-    
-        // Event handlers
+
         function submitAnswer(index) {
             const answerButtons = document.querySelectorAll('.answer-btn');
             answerButtons.forEach(btn => btn.disabled = true);
 
-            const timeLeft = parseInt(document.querySelector('.timer-text').textContent);
-            const selectedAnswer = document.getElementById(`answer-${index}`).textContent;
+            const timerText = document.querySelector('.timer-text')?.textContent || '0';
+            const timeLeft = parseInt(timerText) || 0;
+            
+            const selectedButton = document.getElementById(`answer-${index}`);
+            const selectedAnswer = selectedButton ? selectedButton.textContent : '';
+            
+            console.log('Submitting answer:', selectedAnswer); // Debug log
             
             socket.emit('submitAnswer', {
                 answer: selectedAnswer,
