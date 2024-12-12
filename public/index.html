@@ -206,6 +206,7 @@
         let isHost = false;
         let currentQuestionTimer = null;
         let hasAnsweredQuestion = false;
+        let countdownMusic = null;
 
         // Join game handler
         document.getElementById('join-game-form').addEventListener('submit', (e) => {
@@ -242,6 +243,8 @@
             
             if (isHost) {
                 document.getElementById('host-controls').classList.remove('invisible');
+                // Initialize audio when host joins
+                initializeAudio();
             }
         });
 
@@ -315,8 +318,10 @@
                 currentQuestionTimer = null;
             }
 
-            if (countdownMusic) {
+            // Stop countdown music if playing and user is host
+            if (isHost && countdownMusic) {
                 countdownMusic.pause();
+                countdownMusic.currentTime = 0;
             }
 
             document.querySelectorAll('.screen').forEach(screen => {
@@ -415,6 +420,33 @@
                 `).join('');
         });
 
+
+        // Socket error handlers
+        socket.on('error', (error) => {
+            console.error('Socket error:', error);
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            cleanupCurrentQuestion();
+        });
+
+        function cleanupAudio() {
+            if (isHost && countdownMusic) {
+                countdownMusic.pause();
+                countdownMusic.currentTime = 0;
+            }
+        }
+
+        // Initialize audio elements
+        function initializeAudio() {
+            countdownMusic = document.getElementById('countdown-music');
+            if (countdownMusic) {
+                // Preload the audio
+                countdownMusic.load();
+            }
+        }
+
         // Helper functions
         function startQuestionTimer(duration) {
             const timerElement = document.querySelector('.timer-text');
@@ -427,11 +459,15 @@
                 clearInterval(currentQuestionTimer);
             }
 
-            // Start playing countdown music
-            const countdownMusic = document.getElementById('countdown-music');
-            if (countdownMusic) {
+            // Only play countdown music if user is host
+            if (isHost && countdownMusic) {
                 countdownMusic.currentTime = 0;
-                countdownMusic.play();
+                
+                // Add error handling for audio playback
+                countdownMusic.play().catch(error => {
+                    console.log('Audio playback failed:', error);
+                    // Continue with timer even if audio fails
+                });
             }
 
             function updateTimer() {
@@ -446,8 +482,9 @@
                 // Check if time is up
                 if (timeLeft <= 0) {
                     clearInterval(currentQuestionTimer);
-                    if (countdownMusic) {
+                    if (isHost && countdownMusic) {
                         countdownMusic.pause();
+                        countdownMusic.currentTime = 0;
                     }
                     if (!hasAnsweredQuestion) {
                         submitAnswer(-1); // Submit no answer if haven't answered
@@ -510,6 +547,50 @@
             }
         }
 
+        function cleanupCurrentQuestion() {
+            if (currentQuestionTimer) {
+                clearInterval(currentQuestionTimer);
+                currentQuestionTimer = null;
+            }
+            if (isHost && countdownMusic) {
+                countdownMusic.pause();
+                countdownMusic.currentTime = 0;
+            }
+            hasAnsweredQuestion = false;
+        }
+
+        // Function for the leaderboard button
+        function showLeaderboard() {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            document.getElementById('leaderboard-screen').classList.remove('hidden');
+        }
+
+        // Music toggle function for the music button
+        function toggleMusic() {
+            const music = document.getElementById('lobby-music');
+            const icon = document.getElementById('music-icon');
+            if (music) {
+                if (music.paused) {
+                    music.play();
+                    icon.setAttribute('data-lucide', 'volume-2');
+                } else {
+                    music.pause();
+                    icon.setAttribute('data-lucide', 'volume-x');
+                }
+                lucide.createIcons(); // Refresh icons
+            }
+        }
+
+        // Reset game function for the "Play Again" button
+        function resetGame() {
+            cleanupCurrentQuestion();
+            switchToScreen('registration-screen');
+            socket.disconnect();
+            socket.connect();
+        }
+
         // Start game button handler
         document.getElementById('start-game-btn').addEventListener('click', () => {
             if (isHost) {
@@ -526,6 +607,10 @@
                 screen.classList.add('hidden');
             });
             document.getElementById('registration-screen').classList.remove('hidden');
+            // Initialize audio if needed
+            if (isHost) {
+                initializeAudio();
+            }
         }
 
         // Call initialization
