@@ -199,6 +199,8 @@ io.on('connection', (socket) => {
 
 // Helper functions
 function startQuestion() {
+    console.log('Starting question:', gameState.currentQuestion);
+    
     gameState.phase = 'question';
     gameState.answeredCount = 0;
     
@@ -207,16 +209,9 @@ function startQuestion() {
     });
 
     const currentQuestion = gameState.questions[gameState.currentQuestion];
-    console.log('Sending question:', {
-        questionNumber: gameState.currentQuestion + 1,
-        questionData: {
-            question: currentQuestion.question,
-            options: currentQuestion.answers,
-            correctAnswer: currentQuestion.answers[currentQuestion.correct]
-        }
-    });
+    console.log('Current question data:', currentQuestion);
 
-    io.emit('showQuestion', {
+    const questionData = {
         questionNumber: gameState.currentQuestion + 1,
         questionData: {
             question: currentQuestion.question,
@@ -224,7 +219,10 @@ function startQuestion() {
             correctAnswer: currentQuestion.answers[currentQuestion.correct]
         },
         totalTime: QUESTION_TIME
-    });
+    };
+    
+    console.log('Emitting question data:', questionData);
+    io.emit('showQuestion', questionData);
 
     if (gameState.timer) clearTimeout(gameState.timer);
     gameState.timer = setTimeout(() => {

@@ -216,7 +216,10 @@
         // Socket event listeners
         socket.on('connect', () => {
             console.log('Connected to server');
-            document.getElementById('connection-status').textContent = 'Connected';
+            document.getElementById('connection-status').innerHTML = `
+                <div class="text-green-600">Connected</div>
+                <div class="text-xs text-gray-500">${socket.id}</div>
+            `;
         });
 
         socket.on('connect_error', (error) => {
@@ -253,22 +256,23 @@
             console.log('Processing question:', questionData.question);
             console.log('Options:', questionData.options);
 
-            // Clear previous screen
-            document.querySelectorAll('.screen').forEach(screen => {
-                screen.classList.add('hidden');
-            });
+            // First hide waiting room
+            document.getElementById('waiting-room').classList.add('hidden');
+            document.getElementById('registration-screen').classList.add('hidden');
             
-            // Show question screen
+            // Then show question screen
             const questionScreen = document.getElementById('question-screen');
             questionScreen.classList.remove('hidden');
 
             // Update question text
-            const questionElement = document.getElementById('question-text');
-            questionElement.textContent = questionData.question;
+            document.getElementById('question-text').textContent = questionData.question;
 
-            // Hide unused answer buttons
+            // Update answer buttons
             const answerButtons = document.querySelectorAll('.answer-btn');
-            answerButtons.forEach(button => button.style.display = 'none');
+            answerButtons.forEach(button => {
+                button.style.display = 'none'; // Hide all buttons first
+                button.disabled = true; // Disable all buttons
+            });
 
             // Show and update only the buttons we need
             questionData.options.forEach((option, index) => {
@@ -277,11 +281,7 @@
                     button.style.display = 'block';
                     button.textContent = option;
                     button.disabled = false;
-                    
-                    // Remove old event listeners and add new one
-                    const newButton = button.cloneNode(true);
-                    button.parentNode.replaceChild(newButton, button);
-                    newButton.addEventListener('click', () => submitAnswer(index));
+                    button.onclick = () => submitAnswer(index); // Directly set onclick handler
                 }
             });
 
@@ -426,6 +426,8 @@
         document.getElementById('start-game-btn').addEventListener('click', () => {
             if (isHost) {
                 console.log('Host starting game...');
+                // Hide waiting room immediately
+                document.getElementById('waiting-room').classList.add('hidden');
                 socket.emit('startGame');
             }
         });
