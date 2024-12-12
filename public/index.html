@@ -453,7 +453,8 @@
             const progressElement = document.querySelector('.timer-progress');
             let timeLeft = duration;
             hasAnsweredQuestion = false;
-            let lastUpdate = Date.now();
+            let startTime = Date.now();
+            let endTime = startTime + duration;
 
             if (currentQuestionTimer) {
                 clearInterval(currentQuestionTimer);
@@ -469,22 +470,16 @@
 
             function updateTimer() {
                 const now = Date.now();
-                const delta = now - lastUpdate;
-                lastUpdate = now;
-                
-                // Ensure timeLeft doesn't go below 0
-                timeLeft = Math.max(0, timeLeft - delta);
-                
-                // Calculate seconds and percentage
-                const secondsLeft = Math.ceil(timeLeft / 1000);
-                const percentage = (timeLeft / duration) * 100;
+                const remaining = Math.max(0, endTime - now);
+                const secondsLeft = Math.ceil(remaining / 1000);
+                const percentage = (remaining / duration) * 100;
                 
                 // Update UI
                 timerElement.textContent = `${secondsLeft} seconds`;
                 progressElement.style.width = `${percentage}%`;
                 
-                // Check if timer has reached 0
-                if (timeLeft <= 0) {
+                // Check if time is really up (using actual timestamps)
+                if (now >= endTime) {
                     clearInterval(currentQuestionTimer);
                     currentQuestionTimer = null;
                     
@@ -493,9 +488,13 @@
                         countdownMusic.currentTime = 0;
                     }
                     
+                    // Submit no answer if haven't answered
                     if (!hasAnsweredQuestion) {
-                        submitAnswer(-1); // Submit no answer if haven't answered
+                        submitAnswer(-1);
                     }
+
+                    // The server will handle showing results when timer expires or all players answer
+                    return;
                 }
             }
 
@@ -519,7 +518,7 @@
                 btn.classList.add('opacity-50');
             });
 
-            // Get current time left
+            // Get actual time remaining based on original duration
             const timerText = document.querySelector('.timer-text').textContent;
             const seconds = parseInt(timerText.split(' ')[0]) || 0;
             const timeLeft = seconds * 1000;
@@ -533,13 +532,13 @@
                 selectedButton.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
             }
             
-            // Submit answer
+            // Submit answer with accurate time remaining
             socket.emit('submitAnswer', {
                 answer: answer,
                 timeLeft: timeLeft
             });
             
-            // Timer continues running - don't clear it!
+            // Timer continues running until server sends results
         }
 
         function cleanupQuestion() {
