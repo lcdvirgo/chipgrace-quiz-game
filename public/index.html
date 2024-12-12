@@ -313,6 +313,8 @@
         });
 
         socket.on('showResults', (data) => {
+            console.log('Received showResults event:', data); // Add logging
+            
             // Clean up any existing timer
             if (currentQuestionTimer) {
                 clearInterval(currentQuestionTimer);
@@ -325,23 +327,31 @@
                 countdownMusic.currentTime = 0;
             }
 
-            // Hide all screens
+            // Hide all screens first
             document.querySelectorAll('.screen').forEach(screen => {
                 screen.classList.add('hidden');
+                screen.classList.remove('active');
             });
 
             // Show answer reveal screen
             const answerReveal = document.getElementById('answer-reveal');
             answerReveal.classList.remove('hidden');
+            answerReveal.classList.add('active');
 
             // Show results with updated styling
             const resultsContainer = document.getElementById('player-results');
             resultsContainer.innerHTML = '';
 
-            // Show correct answer with Tailwind styling
+            // Add statistics banner
+            const stats = data.stats;
             resultsContainer.innerHTML = `
-                <div class="text-xl font-bold text-center mb-8 text-emerald-600 bg-emerald-50 py-4 rounded-lg">
-                    Correct Answer: ${data.correctAnswer}
+                <div class="mb-8">
+                    <div class="text-xl font-bold text-center text-emerald-600 bg-emerald-50 py-4 rounded-lg">
+                        Correct Answer: ${data.correctAnswer}
+                    </div>
+                    <div class="mt-4 text-center text-gray-600">
+                        ${stats.correctAnswers} out of ${stats.totalPlayers} players answered correctly
+                    </div>
                 </div>
             `;
 
@@ -349,12 +359,17 @@
             data.players.forEach(player => {
                 const isCorrect = player.currentAnswer === data.correctAnswer;
                 resultsContainer.innerHTML += `
-                    <div class="player-result p-4 rounded-lg mb-3 ${isCorrect ? 'bg-emerald-100 border-l-4 border-emerald-500' : 'bg-red-100 border-l-4 border-red-500'} transition-all duration-300">
+                    <div class="player-result p-4 rounded-lg mb-3 ${
+                        isCorrect ? 'bg-emerald-100 border-l-4 border-emerald-500' : 
+                        player.currentAnswer === null ? 'bg-gray-100 border-l-4 border-gray-500' : 
+                        'bg-red-100 border-l-4 border-red-500'
+                    } transition-all duration-300">
                         <div class="flex items-center justify-between">
                             <div class="font-semibold text-gray-800">${player.name}</div>
                             <div class="flex items-center">
-                                ${isCorrect ? 
-                                    '<span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-sm">✓ Correct</span>' : 
+                                ${
+                                    isCorrect ? '<span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-sm">✓ Correct</span>' : 
+                                    player.currentAnswer === null ? '<span class="bg-gray-500 text-white px-3 py-1 rounded-full text-sm">No Answer</span>' : 
                                     '<span class="bg-red-500 text-white px-3 py-1 rounded-full text-sm">✗ Wrong</span>'
                                 }
                             </div>
@@ -367,6 +382,7 @@
                 `;
             });
         });
+
 
         socket.on('showLeaderboard', (data) => {
             document.querySelectorAll('.screen').forEach(screen => {
@@ -429,6 +445,13 @@
         // Socket error handlers
         socket.on('error', (error) => {
             console.error('Socket error:', error);
+            // Show error message to user
+            const connectionStatus = document.getElementById('connection-status');
+            if (connectionStatus) {
+                connectionStatus.innerHTML = `
+                    <div class="text-red-600">Error: ${error.message}</div>
+                `;
+            }
         });
 
         socket.on('disconnect', () => {
@@ -531,12 +554,7 @@
                 btn.classList.add('opacity-50');
             });
 
-            // Get time remaining (0 if timer expired)
-            const timerText = document.querySelector('.timer-text').textContent;
-            const seconds = parseInt(timerText.split(' ')[0]) || 0;
-            const timeLeft = seconds * 1000;
-            
-            // Handle timeout case (index = -1)
+            // Get selected answer text
             let answer = null;
             if (index >= 0) {
                 const selectedButton = document.getElementById(`answer-${index}`);
@@ -549,12 +567,8 @@
                 }
             }
             
-            console.log('Emitting submitAnswer:', { answer, timeLeft });
-            // Submit answer to server
-            socket.emit('submitAnswer', {
-                answer: answer,
-                timeLeft: timeLeft
-            });
+            console.log('Emitting submitAnswer:', { answer });
+            socket.emit('submitAnswer', { answer });
         }
 
         function cleanupQuestion() {
@@ -569,6 +583,17 @@
             }
         }
 
+        function showLoadingState() {
+            const screens = document.querySelectorAll('.screen');
+            screens.forEach(screen => {
+                if (!screen.classList.contains('hidden')) {
+                    const loader = document.createElement('div');
+                    loader.className = 'absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center';
+                    loader.innerHTML = '<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>';
+                    screen.appendChild(loader);
+                }
+            });
+        }
 
         function switchToScreen(screenId) {
             console.log(`Switching from ${gameState.currentScreen} to ${screenId}`);

@@ -256,7 +256,7 @@ function startQuestion() {
             });
             
             console.log('Showing results after timeout');
-            showResults();
+            showResults(); // This call is correct
         }
     }, QUESTION_TIME);
 }
@@ -265,6 +265,7 @@ function showResults() {
     // Only proceed if we're still in question phase
     if (gameState.phase !== 'question') return;
     
+    console.log('Entering showResults function'); // Add logging
     gameState.phase = 'results';
     const currentQuestion = gameState.questions[gameState.currentQuestion];
 
@@ -274,13 +275,21 @@ function showResults() {
         gameState.timer = null;
     }
 
-    // Emit results to all players
-    io.emit('showResults', {
+    // Add more detailed result data
+    const resultData = {
         players: Object.values(gameState.players),
         correctAnswer: currentQuestion.answers[currentQuestion.correct],
         question: currentQuestion.question,
-        options: currentQuestion.answers
-    });
+        options: currentQuestion.answers,
+        stats: {
+            totalPlayers: Object.keys(gameState.players).length,
+            correctAnswers: Object.values(gameState.players).filter(p => 
+                p.currentAnswer === currentQuestion.answers[currentQuestion.correct]).length
+        }
+    };
+
+    console.log('Emitting showResults with data:', resultData); // Add logging
+    io.emit('showResults', resultData);
 }
 
 function showLeaderboard() {
