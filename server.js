@@ -90,6 +90,16 @@ const quizQuestions = [
         answers: ["Stop at one", "Sky's the limit!", "2", "3"],
         correct: 2
     }
+    {
+        question: "Which of the following is an activity Chip and Grace is most unlikely to do together?",
+        answers: ["Skydiving", "Swimming", "Snorkelling", "Bungeejumping"],
+        correct: 1
+    }
+    {
+        question: "Who exercises more?",
+        answers: ["Chip", "Grace"],
+        correct: 0
+    }
 ];
 
 // Game state with added timerStart field
