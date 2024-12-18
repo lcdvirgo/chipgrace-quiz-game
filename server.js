@@ -213,56 +213,29 @@ io.on('connection', (socket) => {
     // Other event handlers remain the same
     socket.on('nextQuestion', () => {
         const player = gameState.players[socket.id];
-        console.log('Received nextQuestion event:', {
-            socketId: socket.id,
-            player: player,
-            currentQuestion: gameState.currentQuestion,
-            totalQuestions: gameState.questions.length,
-            gameState: {
-                phase: gameState.phase,
-                isStarted: gameState.isStarted,
-                answeredCount: gameState.answeredCount
-            }
-        });
-    
-        if (!player) {
-            console.error('Player not found for socket ID:', socket.id);
-            return;
-        }
-    
-        if (!player.isHost) {
-            console.error('Non-host tried to request next question:', {
-                playerName: player.name,
-                isHost: player.isHost
-            });
-            return;
-        }
-    
-        console.log('Host requesting next question');
-        gameState.currentQuestion++;
         
-        if (gameState.currentQuestion >= gameState.questions.length) {
-            console.log('No more questions, ending game');
-            endGame();
-        } else {
-            console.log('Starting next question:', {
-                questionNumber: gameState.currentQuestion,
-                question: gameState.questions[gameState.currentQuestion]
-            });
+        if (!player?.isHost) {
+            socket.emit('nextQuestionError', { message: 'Only host can advance questions' });
+            return;
+        }
+
+        try {
+            gameState.currentQuestion++;
             
-            // Reset game state for new question
-            gameState.phase = 'question';
-            gameState.answeredCount = 0;
-            
-            try {
-                // Start new question immediately
+            if (gameState.currentQuestion >= gameState.questions.length) {
+                endGame();
+                socket.emit('nextQuestionComplete', { gameEnded: true });
+            } else {
+                gameState.phase = 'question';
+                gameState.answeredCount = 0;
                 startQuestion();
-            } catch (error) {
-                console.error('Error starting next question:', error);
-                // Reset game state on error
-                gameState.currentQuestion--;
-                gameState.phase = 'results';
+                socket.emit('nextQuestionComplete', { success: true });
             }
+        } catch (error) {
+            console.error('Error starting next question:', error);
+            gameState.currentQuestion--;
+            gameState.phase = 'results';
+            socket.emit('nextQuestionError', { message: error.message });
         }
     });
 

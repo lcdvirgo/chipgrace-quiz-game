@@ -696,11 +696,9 @@
             const nextButton = document.getElementById('next-btn');
             if (!nextButton) return;
             
-            // Clear any existing event listeners
             const newNextButton = nextButton.cloneNode(true);
             nextButton.parentNode.replaceChild(newNextButton, nextButton);
             
-            // Show/hide button based on host status and question number
             newNextButton.style.display = (isHost && !isLastQuestion) ? 'block' : 'none';
             
             if (isHost && !isLastQuestion) {
@@ -710,14 +708,32 @@
                     newNextButton.disabled = true;
                     newNextButton.textContent = 'Loading next question...';
                     
-                    // Add timeout to reset button if question doesn't load
+                    // Add handlers for success/error responses
+                    socket.once('nextQuestionComplete', (data) => {
+                        if (data.gameEnded) {
+                            newNextButton.style.display = 'none';
+                        } else {
+                            newNextButton.disabled = false;
+                            newNextButton.textContent = 'Next Question';
+                        }
+                    });
+
+                    socket.once('nextQuestionError', (error) => {
+                        console.error('Error loading next question:', error);
+                        newNextButton.disabled = false;
+                        newNextButton.textContent = 'Next Question';
+                        // Optionally show error to user
+                        alert('Failed to load next question: ' + error.message);
+                    });
+
+                    // Keep the timeout as a fallback
                     setTimeout(() => {
                         if (newNextButton.disabled) {
                             console.log('Question load timeout - resetting button');
                             newNextButton.disabled = false;
                             newNextButton.textContent = 'Next Question';
                         }
-                    }, 5000); // 5 second timeout
+                    }, 5000);
                 });
             }
         }
