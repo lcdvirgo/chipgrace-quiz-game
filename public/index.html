@@ -214,10 +214,41 @@
             const name = document.getElementById('player-name').value;
             const isHostInput = name.toLowerCase() === 'chipgrace';
             
+            // Disable the form while attempting to join
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const nameInput = document.getElementById('player-name');
+            submitButton.disabled = true;
+            nameInput.disabled = true;
+            submitButton.textContent = 'Joining...';
+            
             socket.emit('joinGame', {
                 name: name,
                 isHost: isHostInput
             });
+        });
+
+        // Add new socket event listener for join errors
+        socket.on('joinError', (error) => {
+            // Re-enable the form
+            const submitButton = document.querySelector('#join-game-form button[type="submit"]');
+            const nameInput = document.getElementById('player-name');
+            submitButton.disabled = false;
+            nameInput.disabled = false;
+            submitButton.textContent = 'Join Game';
+            
+            // Show error message to user
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'mt-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700';
+            errorDiv.textContent = error.message;
+            
+            // Remove any existing error messages
+            const existingError = document.querySelector('#join-game-form .bg-red-100');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            // Add new error message
+            document.getElementById('join-game-form').appendChild(errorDiv);
         });
 
         // Socket event listeners
@@ -238,12 +269,17 @@
             playerId = data.playerId;
             isHost = data.isHost;
             
+            // Clear any error messages
+            const existingError = document.querySelector('#join-game-form .bg-red-100');
+            if (existingError) {
+                existingError.remove();
+            }
+            
             document.getElementById('registration-screen').classList.add('hidden');
             document.getElementById('waiting-room').classList.remove('hidden');
             
             if (isHost) {
                 document.getElementById('host-controls').classList.remove('invisible');
-                // Initialize audio when host joins
                 initializeAudio();
             }
         });

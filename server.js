@@ -120,6 +120,13 @@ io.on('connection', (socket) => {
     // Previous event handlers remain the same until startQuestion
     socket.on('joinGame', (data) => {
         const { name, isHost } = data;
+        
+        // Check if game is already in progress
+        if (gameState.isStarted && !isHost) {
+            socket.emit('joinError', { message: 'Game is already in progress. Please wait for the next game.' });
+            return;
+        }
+        
         console.log(`Player ${name} joining game (Host: ${isHost})`);
         
         gameState.players[socket.id] = {
